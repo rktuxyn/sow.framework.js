@@ -2,7 +2,7 @@
 /** If window is Undefined*/
 window !== 'undefined' ? '' : ( window = this );
 ( function ( global, factory ) {
-	if ( typeof module === "object" && typeof module.exports === "object" ) {
+	if ( typeof ( module ) === "object" && typeof ( module.exports ) === "object" ) {
 		module.exports = global.document ? factory( global, true ) :
 			function ( w ) {
 				if ( !w.document ) {
@@ -14,11 +14,12 @@ window !== 'undefined' ? '' : ( window = this );
 		factory( global );
 	}
 	/** Pass this if window is not defined yet*/
-}( typeof window !== 'undefined' ? '' : this, function ( _window, noGlobal ) {
+}( typeof ( window ) !== 'undefined' ? '' : this, function ( _window, noGlobal ) {
+	'use strict';
 	window !== 'undefined' ? '' : ( window = _window, _window = undefined );
 	/** [String Format ]*/
 	//String.format('{0} is dead, but {1} is alive! {0} {2}', 'ASP', 'ASP.NET');
-	( typeof ( String.format ) === 'function' ? '' : String.format = function ( format ) {
+	( typeof ( String.format ) === 'function' ? undefined : String.format = function ( format ) {
 		var args = Array.prototype.slice.call( arguments, 1 );
 		return format.replace( /{(\d+)}/g, function ( match, number ) {
 			return typeof args[number] != 'undefined'
@@ -29,19 +30,19 @@ window !== 'undefined' ? '' : ( window = this );
 	} );
 	/** [/String Format ]*/
 	/** [Object Extend]*/
-	( typeof Object.extend === 'function' ? '' : ( Object.extend = function ( destination, source ) {
+	( typeof ( Object.extend ) === 'function' ? undefined : ( Object.extend = function ( destination, source ) {
 		for ( var property in source )
 			destination[property] = source[property];
 		return destination;
 	} ) );
 	/** [/Object Extend]*/
 	/** [Object clone]*/
-	( typeof Object.clone === 'function' ? '' : ( Object.clone = function ( object ) {
+	( typeof ( Object.clone ) === 'function' ? undefined : ( Object.clone = function ( object ) {
 		return this.extend( {}, object );
 	} ) );
 	/** [/Object clone]*/
 	/** [Function Extend]*/
-	( typeof Function.extend === 'function' ? '' : Function.prototype.extend = function ( obj ) {
+	( typeof ( Function.extend ) === 'function' ? undefined : Function.prototype.extend = function ( obj ) {
 		if ( typeof ( this ) !== 'function' ) {
 			console.warn( typeof ( this ) );
 		}
@@ -70,35 +71,29 @@ window !== 'undefined' ? '' : ( window = this );
 		}
 		return -1
 	} ) );
-	( String.prototype.in || ( String.prototype.in = function () {
+	( typeof ( String.prototype.in ) === "function" ? undefined : ( String.prototype.in = function () {
 		if ( ( arguments[0] instanceof [].constructor ) ) {
 			return arguments[0].indexOf( this.toString() ) < 0 ? false : true;
 		}
 		return Array.prototype.slice.call( arguments, 0 ).indexOf( this.toString() ) < 0 ? false : true;
 	} ) );
-
-
-	Number.prototype.in || ( Number.prototype.in = function () {
+	( typeof ( Number.prototype.in ) === "function" ? undefined : ( Number.prototype.in = function () {
 		var val = this.toString(); val = parseInt( val );
 		if ( isNaN( val ) ) { return false; }
 		if ( ( arguments[0] instanceof [].constructor ) ) {
 			return arguments[0].indexOf( val ) < 0 ? false : true;
 		}
 		return Array.prototype.slice.call( arguments, 0 ).indexOf( val ) < 0 ? false : true;
-	} );
-	if ( typeof Element.prototype.removeAttribute !== 'function' ) {
-		Element.prototype.removeAttribute = function ( internalKey ) {
-			this[internalKey] = null;
-		}
-	};
-	if ( typeof Element.prototype.setAttribute !== 'function' ) {
-		Element.prototype.setAttribute = function ( internalKey, value ) {
-			this[internalKey] = value;
-		}
-	};
+	} ) );
+	( typeof ( Element.prototype.removeAttribute ) === "function" ? undefined : ( Element.prototype.removeAttribute = function ( internalKey ) {
+		this[internalKey] = null;
+	} ) );
+	( typeof ( Element.prototype.setAttribute ) === "function" ? undefined : ( Element.prototype.setAttribute = function ( internalKey ) {
+		this[internalKey] = value;
+	} ) );
 	/** [Element] **/
 	/** [Element.remove()] **/
-	if ( typeof Element.prototype.remove !== 'function' ) {
+	if ( typeof ( Element.prototype.remove ) !== 'function' ) {
 		Element.prototype.remove = function () {
 			if ( this.parentElement === null ) {
 				//console.trace();
@@ -110,7 +105,7 @@ window !== 'undefined' ? '' : ( window = this );
 		}
 		NodeList.prototype.remove = HTMLCollection.prototype.remove = function () {
 			var i = this.length;
-			typeof i !== 'number' ? ( i = 0 ) : ( i = i - 1 );
+			typeof ( i ) !== 'number' ? ( i = 0 ) : ( i = i - 1 );
 			while ( i-- ) {
 				!( this[i] && this[i].parentElement ) ? '' : this[i].parentElement.removeChild( this[i] )
 			}
@@ -119,56 +114,51 @@ window !== 'undefined' ? '' : ( window = this );
 	};
 	/** [/Element.remove()] **/
 	/** [Element.getAttributes] **/
-	if ( typeof Element.prototype.getAttributes !== 'function' ) {
-		Element.prototype.getAttributes = function ( attrname ) {
-			var i, ilen, out;
-			if ( !attrname ) { return undefined; }
-			if ( typeof this.attributes !== 'object' ) { return undefined; }
-			i = 0, ilen = this.attributes.length, out = '';
-			for ( ; i < ilen; i++ ) {
-				if ( this.attributes[i].name !== attrname ) {
-					continue;
-				}
-				out = this.attributes[i].value; break;
+	( typeof ( Element.prototype.getAttributes ) === "function" ? undefined : ( Element.prototype.getAttributes = function ( attrname ) {
+		var i, ilen, out;
+		if ( !attrname ) { return undefined; }
+		if ( typeof this.attributes !== 'object' ) { return undefined; }
+		i = 0, ilen = this.attributes.length, out = '';
+		for ( ; i < ilen; i++ ) {
+			if ( this.attributes[i].name !== attrname ) {
+				continue;
 			}
-			return out;
+			out = this.attributes[i].value; break;
 		}
-	};
+		return out;
+	} ) );
 	/** [/Element.getAttributes] **/
 	/** [String.prototype.repeat] **/
-	if ( !String.prototype.repeat ) {
-		String.prototype.repeat = function ( count ) {
-			if ( count < 1 ) return '';
-			var result = '', pattern = this.valueOf();
-			while ( count > 1 ) {
-				if ( count & 1 ) result += pattern;
-				count >>= 1, pattern += pattern;
-			}
-			return result + pattern;
+	( typeof ( String.prototype.repeat ) === "function" ? undefined : ( String.prototype.repeat = function ( count ) {
+		if ( count < 1 ) return '';
+		var result = '', pattern = this.valueOf();
+		while ( count > 1 ) {
+			if ( count & 1 ) result += pattern;
+			count >>= 1, pattern += pattern;
 		}
-	};
+		return result + pattern;
+	} ) );
 	/** [String.prototype.repeat] **/
 	/** [/Element] **/
 	window.Sow = function () {
 		/*Export Function*/
 		return {
 			define: function define( name, fun ) {
-				if ( typeof fun !== 'function' ) {
-					throw new Error( 'Invalid function defined in Sow.define instead of function. Args- ' + typeof fun );
-				}
+				if ( typeof ( fun ) !== 'function' )
+					throw new Error( 'Invalid function defined in Sow.define instead of function. Args- ' + typeof ( fun ) );
 				try {
-					var obj = this.export( name ), propertyDescriptor, exports, propertyName;
+					let obj = this.export( name ), exports;
 					exports = fun.call( this );
-					!this.isPlainObject( obj ) ? ( console.error( 'Invalid object define in Sow.define...! Object type ' + typeof obj + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false )
-						: !this.isPlainObject( exports ) ? ( console.error( 'Invalid object define in Sow.define...! Exports type ' + typeof exports + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false ) : function () {
-							for ( propertyName in exports ) {
+					!this.isPlainObject( obj ) ? ( console.error( 'Invalid object define in Sow.define...! Object type ' + typeof ( obj ) + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false )
+						: !this.isPlainObject( exports ) ? ( console.error( 'Invalid object define in Sow.define...! Exports type ' + typeof ( exports ) + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false ) : function () {
+							for ( let propertyName in exports ) {
 								/** Maybe we should check the prototype chain here? The current usage*/
 								/** pattern is always using an object literal so we only care about own*/
 								/** properties.*/
-								propertyDescriptor = Object.getOwnPropertyDescriptor( exports, propertyName );
+								let propertyDescriptor = Object.getOwnPropertyDescriptor( exports, propertyName );
 								if ( propertyDescriptor ) { Object.defineProperty( obj, propertyName, propertyDescriptor ); }
 							}
-							return '';
+							return undefined;
 						}.call( { object: undefined }/** Function inheritance*/ );
 				} catch ( ex ) {
 					console.warn( ex.message );
@@ -217,7 +207,7 @@ window !== 'undefined' ? '' : ( window = this );
 				/// <returns type="Boolean">True is the value is an object; false otherwise.</returns>
 				//return typeof value === "object";
 				if ( obj === null || obj === undefined ) return false;
-				return obj === null ? false : typeof obj !== 'object' ? false : !obj instanceof {}.constructor ? false : true;
+				return obj === null ? false : typeof ( obj ) !== 'object' ? false : !obj instanceof {}.constructor ? false : true;
 			},
 			isDate: function () {
 				/// <summary>Checks whether the specified value is a Date object.</summary>
@@ -249,10 +239,10 @@ window !== 'undefined' ? '' : ( window = this );
 					if ( arguments.length > 1 ) {
 						fields = {};
 						for ( i = 0, len = arguments.length; i < len; i++ ) {
-							this.extend( fields, ( typeof arguments[i] === 'function' ? arguments[i].call( this ) : arguments[i] ) );
+							this.extend( fields, ( typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : arguments[i] ) );
 						}
 					} else {
-						typeof arguments[0] === 'function' ? ( fields = arguments[0].call( this ) ) : ( fields = arguments[0] );
+						typeof ( arguments[0] ) === 'function' ? ( fields = arguments[0].call( this ) ) : ( fields = arguments[0] );
 					}
 					hasConstructor = true;
 					names = Object.keys( fields );
@@ -266,45 +256,40 @@ window !== 'undefined' ? '' : ( window = this );
 					}, {} );
 					prototype = Object.create( ancestor.prototype, descriptor );
 					constructor.prototype = prototype;
-					hasConstructor === false ? '' : prototype.constructor = constructor;
+					hasConstructor === false ? undefined : prototype.constructor = constructor;
 					fields = i = len = names = hasConstructor = ancestor = descriptor = prototype = describe = undefined;
 					return constructor;
 				},
 				extend: function extend( destination, source ) {
 					var property;
 					if ( !( destination instanceof {}.constructor ) || !( source instanceof {}.constructor ) ) {
-						if ( typeof destination !== 'function' || !( source instanceof {}.constructor ) ) {
+						if ( typeof ( destination ) !== 'function' || !( source instanceof {}.constructor ) ) {
 							console.error( 'Invalid Object type define in Sow.Assembler.Create.extend...! \r\n Destination type ' + typeof destination + '; \r\n Source type ' + typeof source + ';' + ( arguments.callee.caller === null || !arguments.callee.caller ? "" : + '\r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ) );
 							return;
 						}
 					}
-					typeof destination === 'function' ? ( destination = destination.call( this ) ) : '';
-					typeof source === 'function' ? ( source = source.call( this ) ) : '';
-					return Object.extend( destination, source );
-                    /*for (property in source) {
-                        destination[property] = source[property];
-                    }
-                    return destination;*/
+					typeof ( destination ) === 'function' ? ( destination = destination.call( this ) ) : undefined;
+					typeof ( source ) === 'function' ? ( source = source.call( this ) ) : undefined;
 				},
 				aggregate: function aggregate() {
-					var fields, i, len;
+					var fields;
 					if ( arguments.length <= 1 ) {
-						return typeof arguments[0] === 'function' ? ( fields = arguments[0].call( this ), fields ) : ( fields = arguments[0], fields );
+						return typeof ( arguments[0] ) === 'function' ? ( fields = arguments[0].call( this ), fields ) : ( fields = arguments[0], fields );
 					}
 					fields = {};
-					for ( i = 0, len = arguments.length; i < len; i++ ) {
-						this.extend( fields, ( typeof arguments[i] === 'function' ? arguments[i].call( this ) : arguments[i] ) );
+					for ( let i = 0, len = arguments.length; i < len; i++ ) {
+						this.extend( fields, ( typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : arguments[i] ) );
 					}
 					return fields;
 				},
 				Closure: function Closure() {
 					try {
 						if ( arguments.length <= 1 ) {
-							typeof arguments[0] === 'function' ? arguments[0].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[0] + ';\r\n' + arguments.callee.caller.toString() );
+							typeof ( arguments[0] ) === 'function' ? arguments[0].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[0] + ';\r\n' + arguments.callee.caller.toString() );
 							return this;
 						}
 						for ( i = 0, len = arguments.length; i < len; i++ ) {
-							typeof arguments[i] === 'function' ? arguments[i].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[i] + ';\r\n' + arguments.callee.caller.toString() );
+							typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[i] + ';\r\n' + arguments.callee.caller.toString() );
 						}
 						return this;
 					} catch ( ex ) {
@@ -320,10 +305,11 @@ window !== 'undefined' ? '' : ( window = this );
 		};
 		return {
 			Assembler: _worker_.Create.aggregate( function () {
-				var fnc = this.Class( _worker_ );/** _worker_.class(_worker_);*/ _worker_ = undefined;
+				var fnc = this.Class( _worker_ );/** _worker_.class(_worker_);*/
+				fnc.extend( _worker_ ); _worker_ = undefined;
 				return fnc;
 			} )
-		}
+		};
 	} )
 		// Moduler
 		.define( 'Sow', function () {
@@ -679,7 +665,7 @@ window !== 'undefined' ? '' : ( window = this );
 						if ( !arguments[0].path )
 							throw new Error( 'Invalid Namespace path..' );
 
-						if ( typeof _MODULE_Bucket[arguments[0].path] === 'function' )
+						if ( typeof ( _MODULE_Bucket[arguments[0].path] ) === 'function' )
 							throw new Error( 'Namespace exist..' );
 
 						var public_module = [];
@@ -1019,19 +1005,64 @@ window !== 'undefined' ? '' : ( window = this );
 					console.log( event );
 				}
 			};
-		} )
-		.define( 'Sow.Async', function () {
+		} ).define( 'Sow.Static', function () {
+			var definePoperty = function ( value ) {
+				return {
+					enumerable: true,
+					writable: false,
+					configurable: true,
+					value: value
+				};
+			};
+			return {
+				all: function ( obj ) {
+					if ( !( typeof ( obj ) === 'object' || obj instanceof {}.constructor ) )
+						throw new Error( "Invalid object defined..." );
+					for ( let p in obj ) {
+						this.define( obj, p, obj[p] );
+					}
+					return obj;
+				},
+				define: function ( obj, poperty, value ) {
+					return !( typeof ( obj ) === 'object' || obj instanceof {}.constructor ) ? this
+						: ( Object.defineProperty( obj, poperty, definePoperty( value ) ), this );
+				},
+				change: function ( obj, property, value ) {
+					let descriptor;
+					return !( typeof ( obj ) !== 'object' || obj instanceof {}.constructor ) ? typeof ( obj )
+						: ( descriptor = Object.getOwnPropertyDescriptor( obj, property ), !( typeof ( obj ) !== 'object' || descriptor instanceof {}.constructor ) ? this : ( descriptor.value = value, Object.defineProperty( obj, property, descriptor ), this ) );
+				}
+			};
+		} ).define( 'Sow.Async', function () {
 			var private_worker = {
 				initiate: function ( t ) {
-					return new Promise( function ( resolve ) {
+					if ( !( 'Promise' in window ) ) {
+						return {
+							then: function ( resolve ) {
+								setTimeout( resolve, t );
+							},
+							catch: function () { }
+						};
+					}
+					return new window.Promise( function ( resolve ) {
 						setTimeout( resolve, t ); return;
 					} );
 				},
+				awaitExecute: function ( func, delay, args ) {
+					return private_worker.initiate( delay ).then( function () {
+						func.apply( { Object: undefined }, Array.prototype.slice.call( args, 0 ) );
+						return;
+					}, function ( s ) {
+						console.log( s );
+					} ).catch( function ( reason ) {
+						console.log( 'Error Message: ' + reason.message + '\r\nHandle rejected promise (' + reason.stack + ') here.' );
+					} );
+				},
 				executeAsync: function executeAsync( func, delay, args ) {
-					if ( typeof func !== 'function' ) {
+					if ( typeof ( func ) !== 'function' ) {
 						console.error( 'Invalid function define in webcontrol.instance.executeAsync...! \r\n Function type ' + typeof func + '; \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() );
 					}
-					typeof delay !== 'number' ? ( delay = 0 ) : delay < 0 ? ( delay = 0 ) : '';
+					typeof ( delay ) !== 'number' ? ( delay = 0 ) : delay < 0 ? ( delay = 0 ) : '';
 					if ( !args ) {
 						if ( Sow.browser.Promise.support ) {
 							private_worker.initiate( delay ).then( func, function ( s ) {
@@ -1044,10 +1075,10 @@ window !== 'undefined' ? '' : ( window = this );
 						}
 						return { executeAsync: this.executeAsync };
 					}
-					if ( args !== null && typeof args === 'object' ) {
+					if ( args !== null && typeof ( args ) === 'object' ) {
 						if ( Sow.browser.Promise.support ) {
 							private_worker.initiate( delay ).then( function () {
-								if ( typeof args[0] !== 'object' ) {
+								if ( typeof ( args[0] ) !== 'object' ) {
 									func.apply( { Object: undefined }, args );
 									return { executeAsync: this.executeAsync };
 								}
@@ -1062,7 +1093,7 @@ window !== 'undefined' ? '' : ( window = this );
 							};
 						}
 						setTimeout( function () {
-							if ( typeof args[0] !== 'object' ) {
+							if ( typeof ( args[0] ) !== 'object' ) {
 								func.apply( { Object: undefined }, args );
 								return { executeAsync: this.executeAsync };
 							}
@@ -1072,11 +1103,12 @@ window !== 'undefined' ? '' : ( window = this );
 							executeAsync: this.executeAsync
 						};
 					}
-					console.error( 'Invalid args define in webcontrol.instance.executeAsync...! \r\n Arguments type ' + typeof args + '; \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() );
+					throw new Error( 'Invalid args define in webcontrol.instance.executeAsync...! \r\n Arguments type ' + typeof ( args ) + '; ' );
 				}
-			}
+			};
 			return {
-				execute: private_worker.executeAsync
+				execute: private_worker.executeAsync,
+				awaitExecute: private_worker.awaitExecute
 			};
 		} ).define( 'Sow', function () {
 			function isMobile() {
@@ -1123,7 +1155,7 @@ window !== 'undefined' ? '' : ( window = this );
 			var array, support, jpeg, bb;
 			support = true;
 			try {
-				if ( typeof window.Blob === 'function' ) {
+				if ( typeof ( window.Blob ) === 'function' ) {
 					return {
 						support: true
 					}
@@ -1154,7 +1186,7 @@ window !== 'undefined' ? '' : ( window = this );
 			}
 		} ).define( 'Sow.browser.Promise', function () {
 			let support = true;
-			if ( typeof Promise !== 'function' && Promise.toString().indexOf( "[native code]" ) >= -1 ) {
+			if ( typeof ( Promise ) !== 'function' && Promise.toString().indexOf( "[native code]" ) >= -1 ) {
 				support = false;
 			}
 			return {
@@ -1198,24 +1230,24 @@ window !== 'undefined' ? '' : ( window = this );
 					}(),
 					compatibility: {
 						lineClamp: function () {
-							return "undefined" != typeof b.createElement( "div" ).style.webkitLineClamp
+							return "undefined" != typeof ( b.createElement( "div" ).style.webkitLineClamp )
 						}(),
 						cssTransforms: function () {
 							for ( var a = b.createElement( "div" ), c = ["transformProperty", "WebkitTransform", "MozTransform", "OTransform", "msTransform"], d = 0; d < c.length; d++ )
-								if ( "undefined" != typeof a.style[c[d]] ) return !0;
+								if ( "undefined" != typeof ( a.style[c[d]] ) ) return !0;
 							return !1
 						}()
 					},
 					/** Browser Worker Thread*/
 					workerThread: {
 						/** Is Browser Support Worker Thread*/
-						support: typeof window.Worker !== undefined ? true : false,
+						support: typeof ( window.Worker ) !== undefined ? true : false,
 						/** Check Worker Type**/
-						receiveType: typeof window.Worker !== undefined ? 'object' : 'INVALID'
+						receiveType: typeof ( window.Worker ) !== undefined ? 'object' : 'INVALID'
 					},
 					/** Define Browser Type*/
 					type:/** Whether we are using a IE Browser or not. */
-					typeof window.attachEvent === 'function' && !( Object.prototype.toString.call( window.opera ) == '[object Opera]' )
+					typeof ( window.attachEvent ) === 'function' && !( Object.prototype.toString.call( window.opera ) == '[object Opera]' )
 						? 'IE'
 						/** Whether we are using a Opera Browser or not. */
 						: ( Object.prototype.toString.call( window.opera ) == '[object Opera]' || navigator.userAgent.indexOf( 'Opera Mini' ) > -1 )
@@ -1237,10 +1269,10 @@ window !== 'undefined' ? '' : ( window = this );
 					_opera = a.opera ? 9 : !1;
 					if ( _opera && ( ( navigator.geolocation ? 0 : 1 ) || ( _opera = 10 ), ( a.opera.version ? 0 : 1 ) || ( _opera = parseFloat( a.opera.version() ) ) ), ie = function () { return navigator.userAgent.match( /Trident/ ) && /rv:11.0/i.test( navigator.userAgent ) ? 11 : "object" != typeof b.all || _opera ? !1 : "CSS1Compat" != b.compatMode ? 6 : a.XMLHttpRequest ? Object.defineProperty ? "object" != typeof DOMImplementation || "function" != typeof DOMImplementation.prototype.createDocument ? 8 : a.msMatchMedia ? 10 : 9 : 7 : 6 }(), webkit = ( a.openDatabase ? !0 : !1 ) && !_opera, chrome = webkit && a.chrome ? !0 : !1, safari = webkit && !chrome, safari && ( ( b.compareDocumentPosition ? 0 : 1 ) || ( safari = 4 ), ( navigator.registerContentHandler ? 0 : 1 ) || ( safari = 5 ), ( a.matchMedia ? 0 : 1 ) || ( safari = 6 ) ), firefox = !!navigator.userAgent.match( /firefox/i ), firefox ) {
 						try {
-							"function" == typeof b.createElement( "canvas" ).getContext && ( firefox = 1.5 )
+							"function" == typeof ( b.createElement( "canvas" ).getContext ) && ( firefox = 1.5 )
 						} catch ( d ) { }
 
-						"object" == typeof a.globalStorage && ( firefox = 2 ), ( b.elementFromPoint ? 0 : 1 ) || ( firefox = 3 ), ( b.querySelector ? 0 : 1 ) || ( firefox = 3.5 ), ( b.getElementsByTagName( "head" )[0].mozMatchesSelector ? 0 : 1 ) || ( firefox = 3.6 ), ( a.Uint8Array ? 0 : 1 ) || ( firefox = 4 ), ( Function.prototype.isGenerator ? 0 : 1 ) || ( firefox = 5 ), ( a.matchMedia ? 0 : 1 ) || ( firefox = 6 ), ( a.FileReader && a.FileReader.prototype.readAsArrayBuffer ? 0 : 1 ) || ( firefox = 7 ), ( b.head && b.head.insertAdjacentHTML ? 0 : 1 ) || ( firefox = 8 )
+						"object" == typeof ( a.globalStorage ) && ( firefox = 2 ), ( b.elementFromPoint ? 0 : 1 ) || ( firefox = 3 ), ( b.querySelector ? 0 : 1 ) || ( firefox = 3.5 ), ( b.getElementsByTagName( "head" )[0].mozMatchesSelector ? 0 : 1 ) || ( firefox = 3.6 ), ( a.Uint8Array ? 0 : 1 ) || ( firefox = 4 ), ( Function.prototype.isGenerator ? 0 : 1 ) || ( firefox = 5 ), ( a.matchMedia ? 0 : 1 ) || ( firefox = 6 ), ( a.FileReader && a.FileReader.prototype.readAsArrayBuffer ? 0 : 1 ) || ( firefox = 7 ), ( b.head && b.head.insertAdjacentHTML ? 0 : 1 ) || ( firefox = 8 )
 					}
 					chrome ? this.chrome = chrome : '' || firefox ? this.firefox = firefox : '' || ie ? this.ie = ie : '' || _opera ? this.opera = _opera : '' || webkit ? this.webkit = webkit : '' || safari ? this.safari = safari : '';
 					return { chrome: chrome, firefox: firefox, ie: ie, opera: _opera, webkit: webkit, safari: safari }
@@ -1251,14 +1283,14 @@ window !== 'undefined' ? '' : ( window = this );
 				if ( browser[e[f]] !== false && browser[e[f]] ) {
 					! function ( x, y ) {
 						x[y + "Upto"] = function ( a ) {
-							return this[x] && ( "number" != typeof this[x] || this[x] <= a )
+							return this[x] && ( "number" != typeof ( this[x] ) || this[x] <= a )
 						}, x[y + "Atleast"] = function ( a ) {
-							return this[x] && ( "number" != typeof this[x] || this[x] >= a )
+							return this[x] && ( "number" != typeof ( this[x] ) || this[x] >= a )
 						}
 					}( browser, e[f] );
 					break;
 				}
-			}
+			};
 			e = undefined;
 			/** Define Browser Version*/
 			browser.version = function ( x ) {
@@ -1287,12 +1319,12 @@ window !== 'undefined' ? '' : ( window = this );
 			/** Whether this browser version is support or not*/
 			browser.support = function support( options ) {
 				let key, keys, shiftObj = options, bn, OS, i, isSupport = false; options = {};
-				if ( typeof shiftObj !== 'object' ) { return; }
+				if ( typeof ( shiftObj ) !== 'object' ) { return; }
 				for ( i in shiftObj ) {
 					if ( !i ) continue;
 					key = i; key = key.toLowerCase();
 					options[key] = {};
-					typeof shiftObj[i] === 'object' ? function () {
+					typeof ( shiftObj[i] ) === 'object' ? function () {
 						for ( var j in shiftObj[i] ) {
 							if ( !j ) continue;
 							keys = j;
@@ -1300,7 +1332,7 @@ window !== 'undefined' ? '' : ( window = this );
 							options[key][keys] = shiftObj[i][j];
 						}
 					}.call( { Object: undefined } ) : undefined;
-				}
+				};
 				shiftObj = undefined;
 				OS = Sow.OS ? ( Sow.OS ).toLowerCase() : undefined;
 				bn = this.name ? ( this.name ).toLowerCase() : '';
@@ -1330,10 +1362,10 @@ window !== 'undefined' ? '' : ( window = this );
 		console.warn( ex.message );
 		Sow.define( '', function () {
 			var proto;
-			if ( typeof DOMParser === 'function' ) {
+			if ( typeof ( window.DOMParser ) === 'function' ) {
 				proto = DOMParser.prototyp;
 				nativeParse = proto.parseFromString;
-				if ( typeof nativeParse !== 'function' ) {
+				if ( typeof ( nativeParse ) !== 'function' ) {
 					nativeParse = function ( markup, type ) {
 						throw new Error( 'Not Supported! :(' );
 					}
