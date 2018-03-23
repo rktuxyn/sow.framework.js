@@ -1,4 +1,4 @@
-﻿Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
+Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 	const HUBNAME = 'manager';
 	return /**[modules]*/[{
 		1: [function ( require, module, exports ) {
@@ -260,6 +260,7 @@
 				validate: module.aggregate( function () {
 					var q_work = {
 						trim: function ( s ) {
+							if ( !s ) return "";
 							if ( s.length === 0 )
 								return s;
 							return s.replace( /^\s+|\s+$/, '' );
@@ -307,13 +308,17 @@
 								},
 								alphaNumeric: function ( val ) {
 									return /^[0-9a-zA-Z]+$/.test( val );
-								}
+								},
+								mixed/*[specialCharacter]*/: function ( val ) {
+									return /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test( val ) !== true;
+								},
 							}, message = {
 								email: "Email should be the real one!!!",
 								mobile: "Mobile number should be the real one!!!",
 								numeric: "Numeric required !!!",
 								isAlpha: "Alphabet required !!!",
-								alphaNumeric: "Alphabet or Numeric required!!!"
+								alphaNumeric: "Alphabet or Numeric required!!!",
+								mixed: "Special Character e.g. !@#$%^&*() not allowed!!!"
 							};
 							return function ( val, key ) {
 								if ( this.required( key ).error )
@@ -387,7 +392,8 @@
 						return hasError;
 					}
 				} ),
-				reset: function ( cb, isGroup ) {
+				reset: function ( $frm, cb, isGroup ) {
+					$frm = this.getInstance( $frm );
 					Sow.Async.execute( function () {
 						let $el = $( '[data-type="___msg"]' );
 						$el.each( function () {
@@ -396,6 +402,12 @@
 								return;
 							}
 							$( this ).remove();
+							return;
+						} );
+						$frm.each( function () {
+							$( this ).removeClass( 'ng-invalid' )
+								.removeClass( 'form-control-danger' )
+								.addClass( 'ng-valid form-control-success' );
 							return;
 						} );
 						cb.call( v_worker );
@@ -419,10 +431,10 @@
 				}
 			};
 			return {
-				reset: function ( cb, isGroup ) {
+				reset: function ( $frm, cb, isGroup ) {
 					typeof ( isGroup ) !== 'boolean' ? isGroup = false : undefined;
 					var that = this;
-					v_worker.reset( function () {
+					v_worker.reset( $frm, function () {
 						cb.call( that ); that = undefined;
 					}, isGroup );
 					return this;
@@ -510,6 +522,7 @@ Sow.define( "Sow", function () {
 		if ( !page ) return '/pages/dashboard';
 		return page;
 	}();
+	/*[Export]*/
 	return {
 		mapPageNamespace: function ( arr ) {
 			if ( this.isArrayLike( arr ) ) {
@@ -564,7 +577,7 @@ Sow.define( "Sow", function () {
 				uri = lUri = oUri = i = col = oCol = undefined;
 				return;
 			}.call( this )];
-			
+
 			return function ( key ) {
 				if ( !key ) return uriObj;
 				if ( key === 'full' ) return uriObj.full;
@@ -599,6 +612,17 @@ Sow.define( "Sow", function () {
 			}
 			Sow.exportNamespace( namespace ).ready();
 			return;
+		}
+	};
+} ).define( "Sow", function () {
+	return {
+		Web: {
+			userInfo: function ( obj ) {
+				if ( typeof ( obj ) !== 'object' )
+					throw new Error( "Invalid Object defined!!! :(" );
+				this.userInfo = Sow.Static.all( obj );
+				return this;
+			}
 		}
 	};
 } );
