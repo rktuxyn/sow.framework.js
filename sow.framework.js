@@ -149,8 +149,8 @@ window !== 'undefined' ? '' : ( window = this );
 				try {
 					let obj = this.export( name ), exports;
 					exports = fun.call( this );
-					!this.isPlainObject( obj ) ? ( console.error( 'Invalid object define in Sow.define...! Object type ' + typeof ( obj ) + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false )
-						: !this.isPlainObject( exports ) ? ( console.error( 'Invalid object define in Sow.define...! Exports type ' + typeof ( exports ) + ' \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ), false ) : function () {
+					!this.isPlainObject( obj ) ? ( console.error( 'Invalid object define in Sow.define...! Object type ' + typeof ( obj ) + ';' ), false )
+						: !this.isPlainObject( exports ) ? ( console.error( 'Invalid object define in Sow.define...! Exports type ' + typeof ( exports ) + ';' ), false ) : function () {
 							for ( let propertyName in exports ) {
 								/** Maybe we should check the prototype chain here? The current usage*/
 								/** pattern is always using an object literal so we only care about own*/
@@ -263,13 +263,12 @@ window !== 'undefined' ? '' : ( window = this );
 				extend: function extend( destination, source ) {
 					var property;
 					if ( !( destination instanceof {}.constructor ) || !( source instanceof {}.constructor ) ) {
-						if ( typeof ( destination ) !== 'function' || !( source instanceof {}.constructor ) ) {
-							console.error( 'Invalid Object type define in Sow.Assembler.Create.extend...! \r\n Destination type ' + typeof destination + '; \r\n Source type ' + typeof source + ';' + ( arguments.callee.caller === null || !arguments.callee.caller ? "" : + '\r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() ) );
-							return;
-						}
+						if ( typeof ( destination ) !== 'function' || !( source instanceof {}.constructor ) )
+							throw new Error( 'Invalid Object type define in Sow.Assembler.Create.extend...! \r\n Destination type ' + typeof destination + '; \r\n Source type ' + typeof source + ';' );
 					}
 					typeof ( destination ) === 'function' ? ( destination = destination.call( this ) ) : undefined;
 					typeof ( source ) === 'function' ? ( source = source.call( this ) ) : undefined;
+					return Object.extend( destination, source );
 				},
 				aggregate: function aggregate() {
 					var fields;
