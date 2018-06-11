@@ -30,9 +30,14 @@ window !== 'undefined' ? '' : ( window = this );
 	} );
 	/** [/String Format ]*/
 	/** [Object Extend]*/
-	( typeof ( Object.extend ) === 'function' ? undefined : ( Object.extend = function ( destination, source ) {
-		for ( var property in source )
-			destination[property] = source[property];
+	( typeof ( Object.extend ) === 'function' ? undefined : ( Object.extend = function ( destination, source, copy ) {
+		if ( copy ) {
+			for ( let property in source )
+				destination[property] = source[property];
+			return destination;
+		}
+		for ( let property in source )
+			Object.defineProperty( destination, property, Object.getOwnPropertyDescriptor( source, property ) );
 		return destination;
 	} ) );
 	/** [/Object Extend]*/
@@ -41,6 +46,14 @@ window !== 'undefined' ? '' : ( window = this );
 		return this.extend( {}, object );
 	} ) );
 	/** [/Object clone]*/
+	/** [Object nullify]*/
+	( typeof ( Object.nullify ) === 'function' ? undefined : ( Object.nullify = function ( obj ) {
+		for ( let p in obj ) {
+			obj[p] === undefined || obj[p] === "" ? obj[p] = null : undefined;
+		}
+		return obj;
+	} ) );
+	/** [/Object nullify]*/
 	/** [Function Extend]*/
 	( typeof ( Function.extend ) === 'function' ? undefined : Function.prototype.extend = function ( obj ) {
 		if ( typeof ( this ) !== 'function' ) {
@@ -71,6 +84,21 @@ window !== 'undefined' ? '' : ( window = this );
 		}
 		return -1
 	} ) );
+	( typeof ( Array.prototype.where ) === "function" ? undefined : Array.prototype.where = function ( cb ) {
+		if ( null == this ) throw new TypeError( '"this" is null or not defined' );
+		let c = Object( this ),
+			b = c.length >>> 0, i = 0;
+		if ( b <= 0 ) return this;
+		let flag = true;
+		let out = [];
+		do {
+			if ( cb( c[i] ) ) {
+				out.push( c[i] );
+			}
+			i++;
+		} while ( i < b );
+		return out;
+	} );
 	( typeof ( String.prototype.in ) === "function" ? undefined : ( String.prototype.in = function () {
 		if ( ( arguments[0] instanceof [].constructor ) ) {
 			return arguments[0].indexOf( this.toString() ) < 0 ? false : true;
@@ -96,8 +124,7 @@ window !== 'undefined' ? '' : ( window = this );
 	if ( typeof ( Element.prototype.remove ) !== 'function' ) {
 		Element.prototype.remove = function () {
 			if ( this.parentElement === null ) {
-				//console.trace();
-				console.warn( 'Invalid parent element...!' );
+				console.log( 'Invalid parent element...!' );
 				return this;
 			}
 			this.parentElement.removeChild( this );
@@ -115,17 +142,15 @@ window !== 'undefined' ? '' : ( window = this );
 	/** [/Element.remove()] **/
 	/** [Element.getAttributes] **/
 	( typeof ( Element.prototype.getAttributes ) === "function" ? undefined : ( Element.prototype.getAttributes = function ( attrname ) {
-		var i, ilen, out;
-		if ( !attrname ) { return undefined; }
-		if ( typeof this.attributes !== 'object' ) { return undefined; }
-		i = 0, ilen = this.attributes.length, out = '';
-		for ( ; i < ilen; i++ ) {
+		if ( !attrname ) return undefined;
+		if ( typeof ( this.attributes ) !== 'object' ) return undefined;
+		for ( let i = 0, ilen = this.attributes.length ; i < ilen; i++ ) {
 			if ( this.attributes[i].name !== attrname ) {
 				continue;
 			}
-			out = this.attributes[i].value; break;
+			return this.attributes[i].value;
 		}
-		return out;
+		return undefined;
 	} ) );
 	/** [/Element.getAttributes] **/
 	/** [String.prototype.repeat] **/
@@ -144,45 +169,58 @@ window !== 'undefined' ? '' : ( window = this );
 		/*Export Function*/
 		return {
 			define: function define( name, fun ) {
-				if ( typeof ( fun ) !== 'function' )
-					throw new Error( 'Invalid function defined in Sow.define instead of function. Args- ' + typeof ( fun ) );
+				/*if ( fun === null || typeof ( fun ) === 'undefined' )
+					throw new Error( 'Invalid Function/Object defined in Sow.define instead of function. Args- ' + typeof ( fun ) );*/
 				try {
 					let obj = this.export( name ), exports;
-					exports = fun.call( this );
-					!this.isPlainObject( obj ) ? ( console.error( 'Invalid object define in Sow.define...! Object type ' + typeof ( obj ) + ';' ), false )
-						: !this.isPlainObject( exports ) ? ( console.error( 'Invalid object define in Sow.define...! Exports type ' + typeof ( exports ) + ';' ), false ) : function () {
-							for ( let propertyName in exports ) {
-								/** Maybe we should check the prototype chain here? The current usage*/
-								/** pattern is always using an object literal so we only care about own*/
-								/** properties.*/
-								let propertyDescriptor = Object.getOwnPropertyDescriptor( exports, propertyName );
-								if ( propertyDescriptor ) { Object.defineProperty( obj, propertyName, propertyDescriptor ); }
-							}
-							return undefined;
-						}.call( { object: undefined }/** Function inheritance*/ );
+					exports = typeof ( fun ) !== 'function' ? ( typeof ( fun ) === 'object' ? fun : {} ) : fun.call( this );
+					fun = undefined;
+					if ( !this.isPlainObject( obj ) )
+						throw new Error( 'Invalid object define in Sow.define...! Object type ' + typeof ( obj ) + ';' );
+					if ( !this.isPlainObject( exports ) )
+						throw new Error( 'Invalid object define in Sow.define...! Exports type ' + typeof ( exports ) + ';' );
+					let proto = false;
+					for ( let propertyName in exports ) {
+						/** Maybe we should check the prototype chain here? The current usage*/
+						/** pattern is always using an object literal so we only care about own*/
+						/** properties.*/
+						let propertyDescriptor = Object.getOwnPropertyDescriptor( exports, propertyName );
+						if ( !propertyDescriptor ) { proto = true; break; }
+						Object.defineProperty( obj, propertyName, propertyDescriptor );
+					}
+					if ( !proto ) return this;
+					let prototype = Object.getPrototypeOf( exports );
+					for ( let propertyName in prototype ) {
+						/** Maybe we should check the prototype chain here? The current usage*/
+						/** pattern is always using an object literal so we only care about own*/
+						/** properties.*/
+						let propertyDescriptor = Object.getOwnPropertyDescriptor( prototype, propertyName );
+						if ( propertyDescriptor ) { Object.defineProperty( obj, propertyName, propertyDescriptor ); }
+					}
+					return this;
 				} catch ( ex ) {
-					console.warn( ex.message );
+					throw new Error( ex.message );
 				}
 				return this;
 			},
-			export: function ( name, object, objectToExportTo ) {
-				return typeof ( name ) !== 'string' ? undefined : function () {
-					var parts = name.split( '.' ), cur, part, isCheck;
-					isCheck = typeof ( object ) === 'boolean' ? true : typeof ( object ) === 'object' ? 'obj' : false;
-					cur = objectToExportTo || window;
-					for ( part; parts.length && ( part = parts.shift() ); ) {
-						if ( !parts.length && isCheck === 'obj' ) {
-							/** last part and we have an object; use it*/
-							cur[part] = object; continue;
-						}
-						if ( part in cur ) {
-							cur = cur[part]; continue;
-						}
-						if ( isCheck ) { return false; }
-						cur = cur[part] = {};
+			export: function ( name, obj, objectToExportTo ) {
+				if ( typeof ( name ) !== 'string' )
+					throw new Error( 'Invalid export name define in Sow.export...! name type ' + typeof ( name ) + ';' );
+				let parts = name.split( '.' ), cur, isCheck;
+				isCheck = typeof ( obj ) === 'boolean' ? true : typeof ( obj ) === 'object' ? 'obj' : false;
+				cur = objectToExportTo || window;
+				for ( let part; parts.length && ( part = parts.shift() ); ) {
+					if ( !parts.length && isCheck === 'obj' ) {
+						/** last part and we have an object; use it*/
+						cur[part] = obj; continue;
 					}
-					return cur;
-				}.call( { object: undefined }/** Function inheritance*/ );
+					if ( part in cur ) {
+						cur = cur[part]; continue;
+					}
+					if ( isCheck ) { return false; }
+					cur = cur[part] = {};
+				}
+				return cur;
 			},
 			isError: function ( obj ) {
 				/// <summary>Checks whether the specified value is a Error Exception Object.</summary>
@@ -190,16 +228,13 @@ window !== 'undefined' ? '' : ( window = this );
 				/// <returns type="Boolean">true if the value is a Error Exception Object; false otherwise.</returns>
 				return Object.prototype.toString.call( obj ) === "[object Error]";
 			},
-			isArrayLike: function isArrayLike( obj ) {
+			isArrayLike: function ( obj ) {
 				/// <summary>Checks whether the specified value is an array object.</summary>
 				/// <param name="value">Value to check.</param>
 				/// <returns type="Boolean">true if the value is an array object; false otherwise.</returns>
 				if ( obj === null || obj === undefined ) return false;
-				var result = Object.prototype.toString.call( obj );
-				if ( result === "[object NodeList]" || result === "[object Array]" ) {
-					return true;
-				}
-				return false;
+				let result = Object.prototype.toString.call( obj );
+				return result === "[object NodeList]" || result === "[object Array]" ? true : false;
 			},
 			isPlainObject: function ( obj ) {
 				/// <summary>Tests whether a value is an object.</summary>
@@ -215,14 +250,13 @@ window !== 'undefined' ? '' : ( window = this );
 				/// <returns type="Boolean">true if the value is a Date object; false otherwise.</returns>
 				return Object.prototype.toString.call( value ) === "[object Date]";
 			},
-			parseJSONObject: function ( obj ) {
+			JSON: function ( str ) {
 				/// <summary>Parse JSON Object whether the specified value is a JSON object.</summary>
-				if ( obj === null ) return [];
-				if ( this.isArrayLike( obj ) ) {
-					return obj;
-				}
+				if ( str === null ) return [];
+				if ( this.isArrayLike( str ) || this.isPlainObject( str ) )
+					return str;
 				try {
-					return JSON.parse( obj );
+					return JSON.parse( str );
 				} catch ( e ) {
 					console.log( e.message );
 				}
@@ -231,7 +265,90 @@ window !== 'undefined' ? '' : ( window = this );
 
 		}
 	}();
+	//Sow.hook("run").add(function(a){ console.log(a); });
+	//Sow.hook("run").fire(1);
 	Sow.define( 'Sow', function () {
+		var _event = {};
+		return {
+			hook: function ( name, schema ) {
+				if ( typeof ( name ) === 'undefined' )
+					throw new Error( "Hook Name required for assign hook!!!" );
+
+				return {
+					hook: function ( a, b ) {
+						name = a; typeof ( b ) !== 'undefined' ? schema = b : undefined;
+						return this;
+					},
+					add: function ( fn ) {
+						if ( typeof ( fn ) !== 'function' )
+							throw new Error( "Function object required for assign hook!!!" );
+						if ( schema ) {
+							if ( !_event[schema] )
+								_event[schema] = {};
+							if ( !_event[schema][name] )
+								_event[schema][name] = [];
+							_event[schema][name].push( fn );
+							return this;
+						}
+						if ( !_event[name] ) {
+							_event[name] = [];
+							_event[name].push( fn );
+							return this;
+						}
+						_event[name].push( fn );
+						return this;
+					},
+					fire: function () {
+						let ev;
+						if ( schema ) {
+							if ( !_event[schema] ) return this;
+							if ( !_event[schema][name] ) {
+								return this;
+							}
+							ev = _event[schema][name];
+						} else {
+							if ( !_event[name] )
+								return this;
+							ev = _event[name];
+						}
+						let len = ev.length - 1, arg;
+						if ( arguments.length > 1 ) {
+							arg = Array.prototype.slice.call( arguments );
+						}
+						else {
+							arg = arguments[0];
+							if ( arg === null || !( arg instanceof [].constructor ) || typeof ( arg ) !== 'object' ) {
+								arg = [];
+							}
+						}
+						do {
+							let copy = len;
+							Sow.async( function () {
+								ev[copy].apply( this, arg ); return;
+							}, 0 );
+						} while ( len-- );
+						return this;
+					}
+				};
+			}.extend( {
+				remove: function ( name, schema ) {
+					if ( arguments.length <= 0 )
+						throw new Error( "Name or Schema required to remove Hook" );
+
+					if ( typeof ( schema ) !== 'undefined' ) {
+						if ( _event[schema] ) {
+							delete _event[schema];
+						}
+						return this;
+					}
+					if ( _event[schema] ) {
+						delete _event[schema];
+					}
+					return this;
+				}
+			} )
+		};
+	} ).define( 'Sow', function () {
 		var _worker_ = {
 			Create: {
 				Class: function Class() {
@@ -260,7 +377,7 @@ window !== 'undefined' ? '' : ( window = this );
 					fields = i = len = names = hasConstructor = ancestor = descriptor = prototype = describe = undefined;
 					return constructor;
 				},
-				extend: function extend( destination, source ) {
+				extend: function ( destination, source ) {
 					var property;
 					if ( !( destination instanceof {}.constructor ) || !( source instanceof {}.constructor ) ) {
 						if ( typeof ( destination ) !== 'function' || !( source instanceof {}.constructor ) )
@@ -277,26 +394,23 @@ window !== 'undefined' ? '' : ( window = this );
 					}
 					fields = {};
 					for ( let i = 0, len = arguments.length; i < len; i++ ) {
-						this.extend( fields, ( typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : arguments[i] ) );
+						this.extend( fields, arguments[i] );
+						//this.extend( fields, ( typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : arguments[i] ) );
 					}
 					return fields;
 				},
-				Closure: function Closure() {
+				Closure: function () {
 					try {
 						if ( arguments.length <= 1 ) {
-							typeof ( arguments[0] ) === 'function' ? arguments[0].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[0] + ';\r\n' + arguments.callee.caller.toString() );
+							typeof ( arguments[0] ) === 'function' ? arguments[0].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof ( arguments[0] ) );
 							return this;
 						}
 						for ( i = 0, len = arguments.length; i < len; i++ ) {
-							typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : console.warn( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof arguments[i] + ';\r\n' + arguments.callee.caller.toString() );
+							typeof ( arguments[i] ) === 'function' ? arguments[i].call( this ) : console.log( 'Invalid function define in Sow.Assembler.closure...! \r\n Function type ' + typeof ( arguments[i] ) );
 						}
 						return this;
 					} catch ( ex ) {
-						if ( arguments.callee.caller ) {
-							console.warn( ex.message + '\r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() );
-							return this;
-						}
-						console.warn( ex.message );
+						console.log( ex.message );
 						return this;
 					}
 				}
@@ -304,14 +418,13 @@ window !== 'undefined' ? '' : ( window = this );
 		};
 		return {
 			Assembler: _worker_.Create.aggregate( function () {
-				var fnc = this.Class( _worker_ );/** _worker_.class(_worker_);*/
+				let fnc = this.Class( _worker_ );/** _worker_.class(_worker_);*/
 				fnc.extend( _worker_ ); _worker_ = undefined;
 				return fnc;
 			} )
 		};
-	} )
-		// Moduler
-		.define( 'Sow', function () {
+	} ).define( 'Sow', function () {
+			// Moduler
 			'use strict'
 			var _MODULE_, _REGISTRY_, CREATE;
 			CREATE = ( new this.Assembler() ).Create;
@@ -321,7 +434,7 @@ window !== 'undefined' ? '' : ( window = this );
 						path: undefined,
 						isClass: true
 					}
-				}
+				};
 				return {
 					blueprint: this.aggregate( function () {
 						var publicModule = {
@@ -846,7 +959,7 @@ window !== 'undefined' ? '' : ( window = this );
 					registerNamespace: function ( namespaceName, modules ) {
 						if ( typeof ( namespaceName ) !== 'string' )
 							throw new Error( "Namespace Name string type required... :(" );
-
+						this.define( namespaceName, {} );
 						let extend = false; let child;
 
 						if ( typeof ( Namespace[namespaceName] ) === 'string' ) {
@@ -910,6 +1023,13 @@ window !== 'undefined' ? '' : ( window = this );
 						}
 						return this;
 					},
+					namespaceExists: function ( namespaceName ) {
+						if ( typeof ( namespaceName ) !== 'string' )
+							throw new Error( "Parent Namespace required!!!" );
+						if ( typeof ( Namespace[namespaceName] ) !== 'object' )
+							return false;
+						return true;
+					},
 					reRegisterNamespace: function ( namespaceName ) {
 						let isExtended = false; let extNamespace;
 						if ( typeof ( Namespace[namespaceName] ) === 'string' ) {
@@ -933,7 +1053,9 @@ window !== 'undefined' ? '' : ( window = this );
 							child = namespaceName; isExtended = true;
 							namespaceName = Namespace[namespaceName];
 						}
-
+						if ( typeof ( Namespace[namespaceName] ) !== 'object' ) {
+							return this;//REMOVE
+						}
 						if ( typeof ( Namespace[namespaceName] ) !== 'object' )
 							throw new Error( String.format( "This Namespace==> `{0}` is not registerd yet!!! :(", ( isExtended ? child : namespaceName ) ) );
 
@@ -1032,7 +1154,7 @@ window !== 'undefined' ? '' : ( window = this );
 						: ( descriptor = Object.getOwnPropertyDescriptor( obj, property ), !( typeof ( obj ) !== 'object' || descriptor instanceof {}.constructor ) ? this : ( descriptor.value = value, Object.defineProperty( obj, property, descriptor ), this ) );
 				}
 			};
-		} ).define( 'Sow.Async', function () {
+		} ).define( 'Sow', function () {
 			var private_worker = {
 				initiate: function ( t ) {
 					if ( !( 'Promise' in window ) ) {
@@ -1040,16 +1162,16 @@ window !== 'undefined' ? '' : ( window = this );
 							then: function ( resolve ) {
 								setTimeout( resolve, t );
 							},
-							catch: function () { }
+							catch: function ( fn ) { }
 						};
 					}
 					return new window.Promise( function ( resolve ) {
 						setTimeout( resolve, t ); return;
 					} );
 				},
-				awaitExecute: function ( func, delay, args ) {
+				await: function ( func, delay, args ) {
 					return private_worker.initiate( delay ).then( function () {
-						func.apply( { Object: undefined }, Array.prototype.slice.call( args, 0 ) );
+						func.apply( Sow, Array.prototype.slice.call( args ) );
 						return;
 					}, function ( s ) {
 						console.log( s );
@@ -1057,29 +1179,31 @@ window !== 'undefined' ? '' : ( window = this );
 						console.log( 'Error Message: ' + reason.message + '\r\nHandle rejected promise (' + reason.stack + ') here.' );
 					} );
 				},
-				executeAsync: function executeAsync( func, delay, args ) {
-					if ( typeof ( func ) !== 'function' ) {
-						console.error( 'Invalid function define in webcontrol.instance.executeAsync...! \r\n Function type ' + typeof func + '; \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() );
-					}
+				async: function ( func, delay, args ) {
+					if ( typeof ( func ) !== 'function' )
+						throw new Error( 'Invalid instance defined instead of Function in executeAsync...! \r\n func type ' + typeof (func) );
+
 					typeof ( delay ) !== 'number' ? ( delay = 0 ) : delay < 0 ? ( delay = 0 ) : '';
 					if ( !args ) {
-						if ( Sow.browser.Promise.support ) {
-							private_worker.initiate( delay ).then( func, function ( s ) {
-								console.warn( s );
+						if ( this.browser.Promise.support ) {
+							private_worker.initiate( delay ).then( function () {
+								func.call( Sow ); return;
+							}, function ( s ) {
+								console.log( s );
 							} ).catch( function ( reason ) {
 								console.log( 'Error Message: ' + reason.message + '\r\nHandle rejected promise (' + reason.stack + ') here.' );
 							} );
 						} else {
 							setTimeout( func, delay );
 						}
-						return { executeAsync: this.executeAsync };
+						return this;
 					}
 					if ( args !== null && typeof ( args ) === 'object' ) {
-						if ( Sow.browser.Promise.support ) {
+						if ( this.browser.Promise.support ) {
 							private_worker.initiate( delay ).then( function () {
 								if ( typeof ( args[0] ) !== 'object' ) {
-									func.apply( { Object: undefined }, args );
-									return { executeAsync: this.executeAsync };
+									func.apply( Sow, args );
+									return;
 								}
 								func.apply( args[0], Array.prototype.slice.call( args, 1 ) ); return;
 							}, function ( s ) {
@@ -1087,32 +1211,28 @@ window !== 'undefined' ? '' : ( window = this );
 							} ).catch( function ( reason ) {
 								console.log( 'Error Message: ' + reason.message + '\r\nHandle rejected promise (' + reason.stack + ') here.' );
 							} );
-							return {
-								executeAsync: this.executeAsync
-							};
+							return this;
 						}
 						setTimeout( function () {
 							if ( typeof ( args[0] ) !== 'object' ) {
-								func.apply( { Object: undefined }, args );
-								return { executeAsync: this.executeAsync };
+								func.apply( Sow, args );
+								return this;
 							}
 							func.apply( args[0], Array.prototype.slice.call( args, 1 ) ); return;
 						}, delay );
-						return {
-							executeAsync: this.executeAsync
-						};
+						return this;
 					}
-					throw new Error( 'Invalid args define in webcontrol.instance.executeAsync...! \r\n Arguments type ' + typeof ( args ) + '; ' );
+					throw new Error( 'Invalid argument defined Arguments type ' + typeof ( args ) + '; ' );
 				}
 			};
 			return {
-				execute: private_worker.executeAsync,
-				awaitExecute: private_worker.awaitExecute
+				async: private_worker.async,
+				await: private_worker.await
 			};
 		} ).define( 'Sow', function () {
 			function isMobile() {
 				/** Whether we are using a Mobile or not. */
-				var a = navigator.userAgent || navigator.vendor || window.opera;
+				let a = navigator.userAgent || navigator.vendor || window.opera;
 				if ( /android|avantgo|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|symbian|treo|up\.(browser|link)|vodafone|wap|windows (ce|phone)|xda|xiino/i.test( a ) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|e\-|e\/|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(di|rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|xda(\-|2|g)|yas\-|your|zeto|zte\-/i.test( a.substr( 0, 4 ) ) ) {
 					return true;
 				}
@@ -1146,50 +1266,23 @@ window !== 'undefined' ? '' : ( window = this );
 				/** Define Device*/
 				isTouchDevice: "ontouchstart" in window,
 				deviceType: function () {
-					var a = navigator.userAgent.match( /iPhone|iPod|iPad/i );
+					let a = navigator.userAgent.match( /iPhone|iPod|iPad/i );
 					return a ? a[0] : "other"
 				}.apply( this )
 			};
 		} ).define( 'Sow.browser.blob', function () {
-			var array, support, jpeg, bb;
-			support = true;
-			try {
-				if ( typeof ( window.Blob ) === 'function' ) {
-					return {
-						support: true
-					}
-				}
-				array = new Int8Array( [17, -45.3] );
-				jpeg = new Blob( [array], { type: "image/jpeg" } );
+			if ( !( 'Blob' in window ) || Blob.toString().indexOf( "[native code]" ) <= -1 ) {
+				// We're screwed, blob constructor unsupported entirely
+				return {
+					support: false
+				};
 			}
-			catch ( e ) {
-				// TypeError old chrome and FF
-				window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
-				if ( e.name === 'TypeError' && window.BlobBuilder ) {
-					bb = new BlobBuilder();
-					bb.append( array.buffer );
-					jpeg = bb.getBlob( "image/jpeg" );
-				}
-				else if ( e.name === "InvalidStateError" ) {
-					// InvalidStateError (tested on FF13 WinXP)
-					jpeg = new Blob( [array.buffer], { type: "image/jpeg" } );
-				}
-				else {
-					support = false;
-					// We're screwed, blob constructor unsupported entirely   
-				}
-			}
-			array = jpeg = bb = '';
 			return {
-				support: support
-			}
+				support: true
+			};
 		} ).define( 'Sow.browser.Promise', function () {
-			let support = true;
-			if ( typeof ( Promise ) !== 'function' && Promise.toString().indexOf( "[native code]" ) >= -1 ) {
-				support = false;
-			}
 			return {
-				support: support
+				support: ( 'Promise' in window ) ? Promise.toString().indexOf( "[native code]" ) >= -1 : false
 			}
 		} )
 		/** Define Sow.dom*/
@@ -1224,25 +1317,25 @@ window !== 'undefined' ? '' : ( window = this );
 			let a = window, b = document, e, f, rt2, len,
 				browser = {
 					dom: function () {
-						var dom = {}; b.getElementById ? 1 : !1, dom && ( ( b.importNode ? 0 : 1 ) || ( dom = 2 ), ( b.normalizeDocument ? 0 : 1 ) || ( dom = 3 ) )
+						let dom = {}; b.getElementById ? 1 : !1, dom && ( ( b.importNode ? 0 : 1 ) || ( dom = 2 ), ( b.normalizeDocument ? 0 : 1 ) || ( dom = 3 ) )
 						return dom;
 					}(),
 					compatibility: {
 						lineClamp: function () {
-							return "undefined" != typeof ( b.createElement( "div" ).style.webkitLineClamp )
+							return "undefined" !== typeof ( b.createElement( "div" ).style.webkitLineClamp )
 						}(),
 						cssTransforms: function () {
-							for ( var a = b.createElement( "div" ), c = ["transformProperty", "WebkitTransform", "MozTransform", "OTransform", "msTransform"], d = 0; d < c.length; d++ )
-								if ( "undefined" != typeof ( a.style[c[d]] ) ) return !0;
+							for ( let a = b.createElement( "div" ),
+								c = ["transformProperty", "WebkitTransform", "MozTransform", "OTransform", "msTransform"],
+								d = 0, len = c.length; d < len; d++ )
+								if ( "undefined" !== typeof ( a.style[c[d]] ) ) return !0;
 							return !1
 						}()
 					},
 					/** Browser Worker Thread*/
 					workerThread: {
 						/** Is Browser Support Worker Thread*/
-						support: typeof ( window.Worker ) !== undefined ? true : false,
-						/** Check Worker Type**/
-						receiveType: typeof ( window.Worker ) !== undefined ? 'object' : 'INVALID'
+						support: ( 'Worker' in window ) ? Worker.toString().indexOf( "[native code]" ) >= -1 : false
 					},
 					/** Define Browser Type*/
 					type:/** Whether we are using a IE Browser or not. */
@@ -1316,51 +1409,630 @@ window !== 'undefined' ? '' : ( window = this );
 				}( this, x ) : /** Undefined browser type define*/ -1;
 			}.call( browser, rt2.info );
 			/** Whether this browser version is support or not*/
-			browser.support = function support( options ) {
-				let key, keys, shiftObj = options, bn, OS, i, isSupport = false; options = {};
-				if ( typeof ( shiftObj ) !== 'object' ) { return; }
-				for ( i in shiftObj ) {
-					if ( !i ) continue;
-					key = i; key = key.toLowerCase();
-					options[key] = {};
-					typeof ( shiftObj[i] ) === 'object' ? function () {
-						for ( var j in shiftObj[i] ) {
-							if ( !j ) continue;
-							keys = j;
-							keys = keys.toLowerCase();
-							options[key][keys] = shiftObj[i][j];
-						}
-					}.call( { Object: undefined } ) : undefined;
+			browser.support = function ( options ) {
+				if ( typeof ( options ) !== 'object' )
+					throw new Error("Invalid options defined instead of Object instance!!!");
+
+				let shiftObj = Object.clone( options ); options = {};
+				let fn = function (i, key) {
+					for ( let j in shiftObj[i] ) {
+						if ( !j ) continue;
+						let keys = j;
+						keys = keys.toLowerCase();
+						options[key][keys] = shiftObj[i][j];
+					}
 				};
-				shiftObj = undefined;
-				OS = Sow.OS ? ( Sow.OS ).toLowerCase() : undefined;
-				bn = this.name ? ( this.name ).toLowerCase() : '';
+				for ( let i in shiftObj ) {
+					if ( !i ) continue;
+					let key = i; key = key.toLowerCase();
+					options[key] = {};
+					typeof ( shiftObj[i] ) === 'object' ? fn( i, key ) : undefined;
+				};
+				shiftObj = fn = undefined;
+				let OS = Sow.OS ? ( Sow.OS ).toLowerCase() : undefined;
+				let bn = this.name ? ( this.name ).toLowerCase() : '';
 				this.required_version = options[OS][bn] ? options[OS][bn] : this.version;
 				return !OS ? function () {
 					return false;
 				}() : !bn ? function () {
 					return false;
 				}() : function () {
-					var msg = 'This application will not work properly in this browser. Please update your browser. Current browser information- ' + 'Name :' + this.name + '; Version: ' + this.version + '; Type: ' + this.type + '; OS :' + Sow.OS + '. Required virsion minimum ' + this.required_version + '.';
+					let msg = 'This application will not work properly in this browser. Please update your browser. Current browser information- ' + 'Name :' + this.name + '; Version: ' + this.version + '; Type: ' + this.type + '; OS :' + Sow.OS + '. Required virsion minimum ' + this.required_version + '.';
 					return options[OS] && !options[OS][bn] ? ( this.support = true, { status: true } ) : this.version >= options[OS][bn] ? ( this.support = true, { status: true } ) : ( this.support = false, { status: false, msg: msg } );
 				}.call( this/** Function inheritance*/ );
 			};
 			/** Export*/
 			return function () {
-				var s = browser; browser = rt2 = undefined;
+				let s = browser; browser = rt2 = undefined;
 				return s;
 			}();
+		} ).define( "Sow", function () {
+			return {
+				Data: (new this.Assembler() ).Create.Class( {
+					export: function () {
+						var Data = { map: {} };
+						return {
+							set: function ( mom, child, value ) {
+								if ( mom && typeof ( mom ) === 'string' && child && typeof ( child ) === 'string' && value !== undefined ) {
+									!Data.map[mom] ? ( Data.map[mom] = {} ) : undefined;
+									!Data.map[mom][child] ? ( Data.map[mom][child] = {} ) : undefined;
+									Data.map[mom][child] = value;
+									return this;
+								}
+								if ( typeof (mom) === 'string' ) {
+									let reset;
+									!Data.map[mom] ? ( reset = false ) : ( reset = Data.map[mom] );
+									if ( !reset ) {
+										Data.map[mom] = child;
+										return this;
+									}
+									if ( typeof ( child ) !== 'object' ) {
+										Data.map[mom] = child;
+										return this;
+									}
+									if ( typeof ( reset ) !== 'object' )
+										throw new Error("Error defined!!! Should Fix!!!");
+
+									for ( let i in child ) {
+										reset[i] = child[i];
+									}
+									Data.map[mom] = reset; return this;
+								}
+								if ( typeof ( mom ) === 'string' )
+									throw new Error( "Invalid instance defined instead of Object!!!" );
+
+								for ( let i in mom ) Data.map[i] = mom[i];
+								return this;
+							},
+							get: function ( mom, child, deep, deeper ) {
+								if ( !mom ) { return Data.map; }
+								if ( typeof mom === 'string' && !child ) {
+									return Data.map[mom];
+								}
+								if ( mom !== undefined && child !== undefined && deep !== undefined && deeper !== undefined ) {
+									return !Data.map[mom] ? undefined : !Data.map[mom][child] ? undefined : !Data.map[mom][child][deep] ? undefined : Data.map[mom][child][deep][deeper];
+								}
+								if ( typeof ( mom ) === 'object' && ( mom instanceof [].constructor ) ) {
+									let out = {}; i = mom.length;
+									while ( i-- ) {
+										out[mom[i]] = Data.map[mom[i]];
+									}
+									return out;
+								}
+								if ( typeof ( child ) === 'object' && ( child instanceof [].constructor ) && mom && typeof mom === 'string' ) {
+									if ( !Data.map[mom] ) { return Data.map; }
+									let out = {}; i = child.length;
+									while ( i-- ) {
+										out[child[i]] = Data.map[mom[child[i]]];
+									}
+									return out;
+								}
+								return !child ? Data.map[mom] : mom && child ? ( !Data.map[mom] ? {} : Data.map[mom][child] ) : {};
+
+							},
+							push: function ( mom, child, value ) {
+								if ( !mom || !child ) { return this; }
+								if ( mom && child && value ) {
+									!Data.map[mom] ? ( Data.map[mom] = {} ) : '';
+									!Data.map[mom][child] ? ( Data.map[mom][child] = [] ) : '';
+									Data.map[mom][child].push( value );
+									return this;
+								}
+								if ( mom && child ) {
+									!Data.map[mom] ? ( Data.map[mom] = [] ) : '';
+									Data.map[mom].push( child );
+									return this;
+								}
+							},
+							clean: function () {
+								Data.map = {}; return this;
+							},
+							clear: function ( name ) {
+								Data.map[name] = {}; return this;
+							}
+						}
+					}
+				} )
+			};
+		} ).define( 'Sow.Task', function () {
+			var _cb = function ( cb ) {
+				return typeof ( cb ) !== 'function' ? function ( status ) {
+					return;
+				} : cb;
+			};
+			return ( new this.Assembler() ).Create.aggregate( function () {
+				return {
+					Await: this.aggregate( function () {
+
+						var _await_worker = {
+							StartNew: function ( wait ) {
+								var _worker_ = {
+									PARALLEL: function () {
+										let C, maxInterVal; C = 0, maxInterVal = wait; /**(500x5ms)*/;
+										let TASK = {};
+										return {
+											response: function ( name, type ) {
+												TASK[name] = type;
+												return this;
+											},
+											task: {
+												set: function ( name, type ) {
+													TASK[name] = type;
+													return this;
+												}
+											},
+											is: {
+												complete: function ( callback ) {
+													let result; console.log( C );
+													C++;
+													if ( C > maxInterVal ) {
+														/** Prevent never-ending Intermission*/
+														console.log( C ); C = 0; TASK = {};
+														callback.call( _await_worker, 'ERROR', 'An error occurred, while we are annoying to load report definition. Please try again.' );
+														return;
+													}
+													result = this.canExecute();
+													if ( result === false ) {
+														Sow.async(/**[Function]**/this.complete, /**[Delay]**/5, [/**[Instance]**/this, /**[Arguments]**/callback] );
+														return;
+													}
+													if ( !result === 'ERROR' ) {
+														if ( typeof ( callback ) !== 'function' ) {
+															console.log( 'processor@isLoaded Callback is undefined in checkQuery...' );
+															return;
+														}
+														Sow.async(/**[Function]**/callback, /**[Delay]**/0, [/**[Instance]**/{ Object: undefined }, /**[Arguments]**/'ERROR', 'An error occurred, while we are annoying to load report definition. Please try again.'] );
+														return;
+													}
+													C = 0, TASK = {};
+													if ( typeof ( callback ) !== 'function' ) {
+														console.log( 'processor@isLoaded Callback is undefined in checkQuery...' );
+														return;
+													}
+													Sow.async(/**[Function]**/callback, /**[Delay]**/0, [/**[Instance]**/{ Object: undefined }, /**[Arguments]**/'SUCCESS'] );
+													return;
+												},
+												canExecute: function () {
+													for ( let i in TASK ) {
+														if ( TASK[i] === false ) {
+															return false;
+														}
+														if ( TASK[i] === 'ERROR' ) {
+															return 'ERROR';
+														}
+													}
+													return true;
+												},
+											}
+										}
+									}()
+								}
+								return {
+									execute: function ( fnc, task_number, cb ) {
+										Sow.async( fnc.call( _await_worker, cb, task_number ), 5 );
+										return this;
+									},
+									set: function ( task_number ) {
+										_worker_.PARALLEL.task.set( task_number, false ); return this;
+									},
+									response: function ( task_number ) {
+										_worker_.PARALLEL.response( task_number, true ); return this;
+									},
+									isComplete: function ( totaljob, cb ) {
+										let what;
+										what = _worker_.PARALLEL.is.canExecute();
+										if ( what === true ) {
+											cb.call( this, 'SUCCESS', totaljob ); return this;
+										}
+										if ( what === 'ERROR' ) {
+											cb.call( this, 'ERROR', totaljob ); return this;
+										}
+										_worker_.PARALLEL.is.complete( function ( status ) {
+											cb.call( this, 'SUCCESS', totaljob ); return;
+										} );
+										return this;
+									}
+								}
+							},
+							For: function ( parallelJob, len, action, wait, callback ) {
+								return {
+									execute: function () {
+										Sow.async( function () {
+											let _TASK_ = _await_worker.StartNew( wait );
+											for ( var i = 0; i < parallelJob; i++ ) {
+												_TASK_.set( i ).execute( function ( cb, task ) {
+													for ( let x = parseInt( len * task / parallelJob ), _len = parseInt( len * ( task + 1 ) / parallelJob ); x < _len; x++ ) {
+														action.call( this, x, task );
+													}
+													cb.call( this, task ); return;
+												}, i, function ( task_num ) {
+													if ( task_num !== ( parallelJob - 1 ) ) {
+														_TASK_.response( task_num ); return;
+													}
+													_TASK_.response( task_num ).isComplete( parallelJob, callback );
+													return;
+												} );
+											}
+										}, 10 );
+										return;
+									}
+								}
+							},
+							Job: function ( p_task, wait, instance, callback ) {
+								return {
+									execute: function () {
+										Sow.async( function () {
+											let task, parallelJob, _TASK_;
+											task = [];
+											for ( let x = 0, xlen = p_task.length; x < xlen; x++ ) {
+												( typeof p_task[x] !== 'function' ?
+													( console.warn( typeof ( p_task[x] ) + '\r\n type TASK not allowed on Parallel Job;' ) )
+													: ( task.push( p_task[x] ) ) );
+											}
+											p_task = undefined;
+											_TASK_ = _await_worker.StartNew( wait );
+											for ( let i = 0, parallelJob = task.length; i < parallelJob; i++ ) {
+												_TASK_.set( i ).execute( function ( cb, job_num ) {
+													task[i].call( instance, function () {
+														cb.call( this, job_num ); return;
+													} );
+													return;
+												}, i, function ( task_num ) {
+													if ( task_num !== ( parallelJob - 1 ) ) {
+														_TASK_.response( task_num ); return;
+													}
+													_TASK_.response( task_num ).isComplete( parallelJob, callback );
+													task = wait = instance = callback = undefined;
+													return;
+												} );
+											}
+											return;
+										}, 0 );
+										return;
+									}
+								}
+							}
+						}
+						return {
+							parallel: {
+								For: function ( parallelJob, len ) {
+									let action, callback, wait;
+									return {
+										wait: function ( _time ) {
+											wait = _time;
+											return this;
+										},
+										action: function ( _action ) {
+											action = _action;
+											return this;
+										},
+										afterComplete: function ( _callback ) {
+											callback = _callback;
+											return this;
+										},
+										For: function ( _parallelJob, _len ) {
+											parallelJob = _parallelJob, len = _len;
+											return this;
+										},
+										start: function () {
+											_await_worker.For( parallelJob, len, _cb( action ),
+												( typeof ( wait ) !== 'number' ? 500 : wait ), _cb( callback ) ).execute();
+											parallelJob = len = action = callback = wait = undefined;
+											return this;
+										}
+									}
+								},
+								job: function ( task ) {
+									let callback, wait, _instance;
+									return {
+										with: function ( instance ) {
+											_instance = instance;
+											return this;
+										},
+										wait: function ( _time ) {
+											wait = _time;
+											return this;
+										},
+										afterComplete: function ( _callback ) {
+											callback = _callback;
+											return this;
+										},
+										start: function () {
+											_await_worker.Job( task, wait, ( typeof ( _instance ) !== 'object' ? {} : _instance ),
+												_cb( callback ) )
+												.execute();
+											callback = wait = _instance = undefined;
+											return this;
+										},
+										job: function ( _task ) {
+											task = _task;
+											return this;
+										}
+									}
+								}
+							}
+						}
+					} ),
+					parallel: this.aggregate( function () {
+						var _TASK_ = {
+							StartNew: function ( fnc, task_number ) {
+								Sow.async( fnc.call( _TASK_, task_number ), 10 );
+								return this;
+							},
+							For: function ( parallelJob, len, action ) {
+								return {
+									execute: function () {
+										Sow.async( function () {
+											for ( var i = 0; i < parallelJob; i++ ) {
+												_TASK_.StartNew( function ( task ) {
+													for ( let x = parseInt( len * task / parallelJob ), _len = parseInt( len * ( task + 1 ) / parallelJob ); x < _len; x++ ) {
+														action.call( this, x, task );
+													}
+													return;
+												}, i );
+											}
+											return;
+										}, 10 );
+										return;
+									}
+								}
+							},
+							Job: function ( task, instance ) {
+								return {
+									execute: function () {
+										Sow.async( function () {
+											let job; job = task.length;
+											_TASK_.For( 10, job, function ( i ) {
+												_TASK_.StartNew( function ( job_num ) {
+													typeof task[i] !== 'function' ? console.log( typeof ( task[i] ) + '\r\nTask Num-' + job_num ) : task[i].call( instance, job_num );
+													return;
+												}, i );
+												return;
+											} ).execute();
+											return;
+										}, 10 );
+										return;
+									}
+								}
+							}
+						}
+						return {
+							For: function ( parallelJob, len ) {
+								let action;
+								return {
+									action: function ( _action ) {
+										action = _action;
+										return this;
+									},
+									For: function ( _parallelJob, _len ) {
+										parallelJob = _parallelJob, len = _len;
+										return this;
+									},
+									start: function () {
+										_TASK_.For( parallelJob, len, _cb( action ) ).execute();
+										parallelJob = len = action = undefined;
+										return this;
+									}
+								}
+							},
+							job: function ( task ) {
+								var _instance;
+								return {
+									with: function ( instance ) {
+										_instance = instance;
+										return this;
+									},
+									start: function () {
+										_TASK_.Job( task, ( typeof ( _instance ) !== 'object' ? {} : _instance ) ).execute();
+										task = _instance = undefined;
+										return this;
+									},
+									job: function ( _task ) {
+										task = _task;
+										return this;
+									}
+								}
+							}
+						}
+					} ),
+					Async: this.aggregate( function () {
+						var _ASYNC_WORKER = {
+							For: function ( start, len, max, delay, action, afterComplete ) {
+								action = _cb( action ); afterComplete = _cb( afterComplete );
+								let request_object = {
+									action: action,
+									afterComplete: afterComplete
+								};
+								action = afterComplete = undefined;
+								if ( typeof max !== 'number' ) {
+									return {
+										execute: function () {
+											Sow.async( function () {
+												for ( var i = start; i < len; i++ ) {
+													request_object.action( i );
+												}
+												request_object.afterComplete( 'SUCCESS' );
+												return;
+											}, 0 );
+											return;
+										}
+									}
+								}
+								return {
+									execute: function () {
+										let _MAX_ = max;
+										Sow.async( function () {
+											var _do = {
+												task: function ( s ) {
+													for ( let i = s; i < len; i++ ) {
+														if ( i >= _MAX_ ) {
+															_MAX_ += max;
+															Sow.async( function () {
+																_do.task( i ); return;
+															}, delay );
+															return;
+														}
+														request_object.action( i );
+													}
+													request_object.afterComplete( 'SUCCESS' ); request_object = undefined;
+													return;
+												}
+											}
+											_do.task( start );
+											return;
+										}, 0 );
+										return;
+									}
+								}
+							}
+						}
+						return {
+							For: function () {
+								let start, len, max, action, afterComplete, hasError, delay;
+								/**INITIALIZE*/
+								return {
+									/**MAX STACK BUNDLE LENGTH*/
+									maxStack: function ( _max ) {
+										max = typeof ( _max ) !== 'number' ? undefined : _max;
+										return this;
+									},
+									/**EACH STACK BUNDLE DELAY*/
+									stackDelay: function ( _delay ) {
+										delay = _delay;
+										return this;
+									},
+									/**LOOP LENGTH*/
+									length: function ( _len ) {
+										if ( typeof ( _len ) !== 'number' ) {
+											console.log( 'Invalid For Length define in webcontrol.instance.Task.Async.For..! \r\n Length type ' + typeof ( _len ) + ';' );
+											return;
+										}
+										len = _len; return this;
+									},
+									/**EACH INCREMENT*/
+									action: function ( _action ) {
+										action = _cb( _action );
+										return this;
+									},
+									/**AFTER COMPLETE*/
+									afterComplete: function ( _callback ) {
+										afterComplete = _cb( _callback );
+										return this;
+									},
+									/**START FROM INCREMENT & EXECUTE*/
+									start: function ( _start ) {
+										start = typeof _start !== 'number' ? 0 : _start;
+										if ( typeof ( len ) !== 'number' ) {
+											console.log( 'Invalid For Length define in webcontrol.instance.Task.Async.For..! \r\n Length type ' + typeof _len + '; \r\n Caller is `' + arguments.callee.caller.name + '`\r\n..' + arguments.callee.caller.toString() );
+											return;
+										}
+										delay = typeof ( delay ) !== 'number' ? 0 : delay;
+										_ASYNC_WORKER.For( start, len, max, delay, action, afterComplete ).execute();
+										start = len = max = action = afterComplete = delay = undefined;
+										return this;
+									},
+									/**RE-INITIALIZE*/
+									For: function () {
+										start = len = max = action = afterComplete = hasError = delay = undefined;
+										return this;
+									},
+								}
+							}
+						}
+					} ),
+					instance: function () {
+						var t_info = {
+
+						};
+						return {
+							register: function ( name ) {
+								t_info[name] = false;
+								return this;
+							},
+							complete: function ( name ) {
+								t_info[name] = true;
+								return this;
+							},
+							start: function () {
+
+								return this;
+							},
+							exit: function ( t ) {
+								for ( var i in t_info ) {
+									if ( t_info[i] === false ) {
+										return false;
+									}
+								}
+								t_info = {};
+								if ( t === false ) {
+									return true;
+								}
+								return true;
+							}
+						};
+					},
+					sequential: this.aggregate( function () {
+						return {
+							initialize: function () {
+								let _TASK_ = [], isFirst = true;
+								return {
+									create: function ( fn, d ) {
+										_TASK_.push( function ( cb, inst ) {
+											Sow.async( function ( wi ) {
+												typeof ( fn ) === 'function' ? fn.call( wi ) : '';
+												wi = undefined;
+												typeof ( cb ) === 'function' ? cb.call( inst ) : '';
+												inst = undefined;
+												return;
+											}, ( typeof d !== 'number' ? 0 : d ), [this] );
+										} );
+										return this;
+									},
+									execute: function ( cb, inst ) {
+										let task = _TASK_.shift();
+										isFirst ? ( isFirst = false, typeof inst !== 'object' ? inst = {
+											result: function ( s ) {
+												console.warn( s );
+											}
+										} : undefined ) : ( undefined );
+										if ( typeof task !== 'function' ) {
+											this.execute( cb, inst );
+											return;
+										}
+										task.call( inst, function () {
+											if ( _TASK_.length > 0 ) {
+												this.execute( cb, inst );
+												return;
+											}
+											typeof ( cb ) !== 'function' ? '' : cb.call( inst, "SUCCESS" );
+											inst = cb = _TASK_ = isFirst = undefined;
+											return;
+										}, this );
+										task = undefined;
+										return this;
+									}
+								};
+							}
+						};
+					} )
+				}
+			} )
 		} );
 
 	try {
-		// WebKit returns null on unsupported types
-		if ( ( new DOMParser() ).parseFromString( "", "text/html" ) ) {
-			// text/html parsing is natively supported
+		if ( 'DOMParser' in window ) {
+			// WebKit returns null on unsupported types
+			if ( ( new DOMParser() ).parseFromString( "", "text/html" ) ) {
+				// text/html parsing is natively supported
+			}
+		} else {
+			throw new Error( "DomParser Not Supported" );
 		}
+		
 	} catch ( ex ) {
-		console.warn( ex.message );
+		console.log( ex.message );
 		Sow.define( '', function () {
-			var proto;
+			var proto, nativeParse;
 			if ( typeof ( window.DOMParser ) === 'function' ) {
 				proto = DOMParser.prototyp;
 				nativeParse = proto.parseFromString;
@@ -1368,6 +2040,10 @@ window !== 'undefined' ? '' : ( window = this );
 					nativeParse = function ( markup, type ) {
 						throw new Error( 'Not Supported! :(' );
 					}
+				}
+			} else {
+				nativeParse = function ( markup, type ) {
+					throw new Error( 'Not Supported! :(' );
 				}
 			};
 			return {
