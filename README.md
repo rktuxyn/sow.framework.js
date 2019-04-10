@@ -1,2 +1,2 @@
 # sow.framework.js
-Javascript Framework
+Complete Single Page Web Apllication Javascript Framework
