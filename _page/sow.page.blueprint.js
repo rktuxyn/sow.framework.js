@@ -1,50 +1,108 @@
+/**
+* Copyright (c) 2018, SOW (https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* @author {SOW}
+* @description {sow.page.blueprint.js}
+* @example { }
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+Sow.hook( "Manager" ).add( "onSginOut", function ( a, arg ) {
+    var q = "/view/";
+    var lhash = location.hash;
+    if ( lhash ) q += lhash;
+    location.href = "/sginout?task=auto&next=" + encodeURIComponent( q );
+} );
+Sow.define( "Sow.store", function () {
+    return ( new this.Data() ).export();
+} );
+Sow.define( "Sow", function () {
+    return {
+        check_privacy: function () {
+            let $flem = $( '[data-footer-info]' );
+            let footer = $flem.html();
+            if ( !footer )
+                throw new Error( "No footer defined!!!" );
+            if ( /Copyright © 2015-[^>]* <a href="https:\/\/www.safeonline.world" target="_blank">SOW<span class="sup">®<\/span><\/a>/gi.test( footer ) === false )
+                throw new Error( "No footer defined!!!" );
+            return $flem.closest( 'div' ).html();
+        }
+    };
+} );
 Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
-	const HUBNAME = 'manager';
+	var HUBNAME = 'Manager';
+	/**Object.extend( window, {
+		get HUBNAME() {
+			return 'manager';
+		}
+	} );*/
 	return /**[modules]*/[{
 		1: [function ( require, module, exports ) {
-			//Sow.unloadNamespace('Sow.Net.SignalR');
+			//Sow.unloadNamespace('Sow.Net.Hub');
 			return module.aggregate( function () {
 				return {
-					ready: function () {
-						require( 'Sow.Net.Route' ).onLoad( "Get Ready!!!" );
-						return;
+                    ready: function () {
+                        try {
+                            Sow.check_privacy();
+                        } catch ( e ) {
+                            document.write( atob( 'PGgxIHN0eWxlPSJjb2xvcjpyZWQ7Ij5VbmFibGUgdG8gbG9hZCBtb2R1bGUuLi4uPC9oMT4=' ) );
+                            Sow.unloadNamespace( 'Sow.Net.Web' );
+                            return;
+                        }
+						require( 'Sow.Net.Route' ).ready( "Get Ready!!!" );
+						return this;
 					},
-					initialize: function ( requireSignalR ) {
+					initialize: function ( requireSignalR, disableTemplate ) {
 						if ( requireSignalR ) {
-							require( 'Sow.Net.SignalR' ).init();
+							require( 'Sow.Net.Hub' ).init( disableTemplate);
+						} else {
+							Sow.unloadNamespace( 'Sow.Net.Hub' );
 						}
-						require( 'Sow.Net.Route' ).onLoad();
+						/**if ( document.readyState === 'complete' || document.readyState === 'interactive' ) {
+							require( 'Sow.Net.Route' ).ready( "Get Ready!!!" );
+							return;
+						}
 						$( document ).on( 'ready', function () {
 							try {
 								require( 'Sow.Net.Route' ).ready( "Get Ready!!!" );
 							} catch ( e ) {
 								throw new Error( "No such page namespace registerd yet. Please at first register your page." );
 							}
-						} );
+						} );*/
+						return this;
 					}
 				};
 			} );
 		}, {
-			'Sow.Net.SignalR': 2,
+			'Sow.Net.Hub': 2,
 			'Sow.Net.Route': 6,
 			owner: 'Page.Manager',
 			public: true
 		}],
 		// MODEL
 		2: [function ( require, module, exports ) {
-			var _SIGNALR = {};
+			var _SOCKET_HUB = {};
 			var _SETTINGS = {
-				pingInterval: 300000,
+				pingInterval: 60000,
 				waitForPageLoad: true,
 				jsonp: false,
 				withCredentials: true,
-				transport: ['webSockets', 'serverSentEvents', 'longPolling']
+				transport: 'webSockets',
+				host: _API_,
+				hubPath: "/hub/",
+				crossDomain: true,
+				logging: true
 			};
 			return {
-				init: function () {
-					Sow.usingNamespace( 'Sow.Net.SignalR' );
-					_SIGNALR = /**require( '../Web/SignalR' )*/Sow.exportNamespace( 'Sow.Net.SignalR' );
-					_SIGNALR.server.initialize( HUBNAME, _SETTINGS, Math.floor( ( 0x2 + Math.random() ) * 0x1000 ), true ).start( function () {
+				init: function ( disableTemplate ) {
+					Sow.usingNamespace( 'Sow.Net.Hub' );
+					if ( !disableTemplate ) {
+						Sow.usingNamespace( 'Sow.Net.Messaging' );
+						Sow.usingNamespace( 'Sow.Net.Web.Template.Master' );
+						require( 'Web.Template.Master' ).ready();
+					}
+					var msg = {};
+					_SOCKET_HUB = /**require( '../Web/SignalR' )*/Sow.exportNamespace( 'Sow.Net.Hub' );
+					_SOCKET_HUB.server.initialize( HUBNAME, _SETTINGS, Math.floor( ( 0x2 + Math.random() ) * 0x1000 ), true ).start( function () {
 						console.log( arguments );
 						let view = require( 'Sow.Net.Web.View' );
 						if ( typeof ( view[arguments[0]] ) === 'function' ) {
@@ -53,34 +111,59 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 						}
 						return this;
 					}, function ( a, b, c ) {
+						if ( disableTemplate ) return this;
+						let chatConf = require( 'Web.Template.Master' ).getChatConfig();
+						if ( chatConf && chatConf.chat_on ) {
+							msg = Sow.exportNamespace( 'Sow.Net.Messaging' ).init.call( this, HUBNAME, chatConf.chatbox_config );
+						}
+						return this;
+					}, function () {
+						disableTemplate ? undefined : msg.connect.apply( this, Array.prototype.slice.call( arguments ) );
+						require( 'Sow.Net.Route' ).onLoad( "Get Ready!!!" );
 						return this;
 					} );
 				},
-				execute: function ( cb ) {
-					_SIGNALR.execute( HUBNAME, cb );
+				execute: function ( check, cb ) {
+					if ( check === false ) {
+						_SOCKET_HUB.execute( HUBNAME, cb );
+						return;
+					}
+					var that = this;
+					_SOCKET_HUB.execute( HUBNAME, function ( c ) {
+						if ( this.connection.state.connected !== 1 ) {
+							console.log( "NOT_CONNECTED" );
+							cb.call( this, "NOT_CONNECTED" );
+							that.server.restart(); that = undefined;
+							return;
+						}
+						that = undefined;
+						cb.call( this, c );
+					} );
 					return this;
 				},
 				server: {
 					restart: function () {
-						_SIGNALR.restart( HUBNAME, _SETTINGS, function () { }, function () { } );
+						_SOCKET_HUB.restart( HUBNAME, _SETTINGS, function () { }, function () { } );
 						return this;
 					},
 					stop: function ( cb ) {
-						_SIGNALR.stop( HUBNAME, cb );
+						_SOCKET_HUB.stop( HUBNAME, cb );
 						return this;
 					}
 				}
 			};
 		}, {
-			'Sow.Net.Web.View': 5
+			'Sow.Net.Web.View': 5,
+			'Web.Template.Master': "Template.Master",
+			'Sow.Net.Route': 6
 		}],
 		// CONTROLLER
 		3: [function ( require, module, exports ) {
 			return {
 				sginOut: function ( cb ) {
-					require( 'Sow.Net.SignalR' ).execute( function ( c ) {
+					require( 'Sow.Net.Hub' ).execute( false, function ( c ) {
 						if ( this.connection.state !== 1 ) {
-							console.log( "NOT CONNECTED" );
+							console.log( "NOT_CONNECTED" );
 							require( 'Sow.Net.Web.View' ).redirect();
 							return;
 						}
@@ -91,7 +174,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 				}
 			};
 		}, {
-			'Sow.Net.SignalR': 2,
+			'Sow.Net.Hub': 2,
 			'Sow.Net.Web.View': 5
 		}],
 		// DATA
@@ -110,7 +193,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 			return {
 				redirect: function ( a, b ) {
 					setTimeout( function () {
-						location.href = "/urlroute.aspx?dc=" + a + "&next=" + encodeURI( location.pathname + "#/" + Sow.currentPage() );
+						location.href = "/urlroute?dc=" + a + "&next=" + encodeURI( location.pathname + "#/" + Sow.currentPage() );
 					}, 100 );
 					return;
 				},
@@ -121,32 +204,36 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 					//console.log( a, b, c );
 					this[c]( a, b );
 				},
-				onConnected: function ( a, b, c ) {
-					let view = require( 'Sow.Net.Web.View.page' );
-					if ( typeof ( view['onConnected'] ) === 'function' ) {
-						view['onConnected'].apply( view, Array.prototype.slice.call( arguments, 0 ) );
-						return this;
-					}
-					view = undefined;
-					require( 'Sow.Net.SignalR' ).execute( function ( c ) {
-						if ( this.connection.state !== 1 ) {
-							console.log( "NOT CONNECTED" );
-							require( 'Sow.Net.SignalR' ).server.restart();
-							return;
-						}
-						this.server.onTaskEnd( c.call( this, function () {
+				onSignalRReady: function () {
+
+				},
+				onConnected: function ( a, b, s ) {
+					var that = this;
+					require( 'Sow.Net.Hub' ).execute( true, function ( c ) {
+						if ( c === "NOT_CONNECTED" ) return;
+						require( 'Sow.Net.Route' ).onLoad.call( this, c, a, b, s );
+						that.onSignalRReady.call( this, c, a, b, s );//Call To Page
+						that = undefined;
+						this.server.taskEnd( c.call( this, function () {
 							console.log( arguments );
 						} ), 'Welcome!!!' );
-						this.server.executeIo( c.call( this, function () {
+						this.server.getConnectedClient( c.call( this, function () {
 							console.log( arguments );
-						} ), "client._check", JSON.stringify( { a: 1, b: 2 } ) );
-						this.server.getConnectedUserObject( c.call( this, function () {
+						} ) );
+						
+						//@argument Role Required
+						/*this.server.executeIo( c.call( this, function () {
+							console.log( arguments );
+						} ), "client._check", JSON.stringify( { a: 1, b: 2 } ) );*/
+						/**this.server.getConnectedUserObject( c.call( this, function () {
 							console.log( arguments );
 						} ) );
 						this.server.getTotalConnectedUser( c.call( this, function () {
 							console.log( arguments );
-						} ) );
+						} ) );*/
 					} );
+					sig = undefined;
+					return;
 				},
 				onTryReConnect: function () {
 					if ( typeof ( this[arguments[0]] ) === 'function' ) {
@@ -156,22 +243,22 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 				},
 				onSginOut: function ( a, b, c ) {
 					var that = this;
-					require( 'Sow.Net.SignalR' ).server.stop( function () {
+					require( 'Sow.Net.Hub' ).server.stop( function () {
 						require( 'Sow.Net.Web.XHR' )
 							.sginOut()
 							.success( function () {
 								that.redirect( Math.floor( ( 0x2 + Math.random() ) * 0x1000 ) );
-								that = undefined;
+								that = undefined; return;
 							} )
 							.error( function () {
 								that.redirect( Math.floor( ( 0x2 + Math.random() ) * 0x1000 ) );
-								that = undefined;
+								that = undefined; return;
 							} );
 					} );
 					return;
 				}
 			};
-		}, { 'Sow.Net.SignalR': 2, 'Sow.Net.Web.Controller': 3, 'Sow.Net.Web.XHR': 7, 'Sow.Net.Web.View.page': 101 }],
+		}, { 'Sow.Net.Hub': 2, 'Sow.Net.Web.Controller': 3, 'Sow.Net.Route': 6, 'Sow.Net.Web.XHR': 7, 'Sow.Net.Web.View.page': 101 }],
 		6: [function ( require, module, exports ) {
 			var pages = {
 				"/pages/dashboard": {
@@ -181,22 +268,32 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 			};
 			return {
 				ready: function ( s ) {
-					$( '#__logout' ).click( function () {
-						require( 'Sow.Net.Web.Controller' ).sginOut( null );
-					} );
-					require( 'Sow.Net.Web.View.page' ).ready();
+					require( 'Sow.Net.Web.View.page' ).ready( "FULL_LOADED" );
+					return this;
 				},
-				onLoad: function () {
+				onLoad: function ( c, a, b, s ) {
+					try {
+						let fn = require( 'Sow.Net.Web.View.page' ).allReady;
+						if ( typeof ( fn ) === 'function' ) {
+							fn.call( this, c, a, b, s );
+						}
+					} catch ( e ) {
+                        console.elog( e );
+					}
+					require( 'Sow.Net.Web.View.page' ).onLoad( "Loaded" );
+					return this;
+				},
+				routeRegister: function () {
 
 				}
 			};
 		}, {
 			'Sow.Net.Web.Controller': 3, 'Sow.Net.Web.View.page': 101,
+			'Web.Template.Master': "Template.Master"
 		}],
 		/** [XML HTTP REQUEST] */
 		7: [function ( require, module, exports ) {
 			return module.aggregate( function () {
-
 				return {
 					sginOut: function () {
 						var request = this.xhr( {
@@ -229,12 +326,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 									data: {}, dataType: 'text',
 									async: true, cache: false,
 									contentType: "application/x-www-form-urlencoded; charset=UTF-8",
-									//success: function ( data ) { return; },
-									//complete: function ( XHR, textStatus ) { return; },
 									beforeSend: function ( xhr ) { return; },
-									//error: function ( i, j, k ) { return; },
-									//progress: function ( event ) { if ( event.lengthComputable ) { var percentComplete = event.loaded / event.total; return; } },
-									//onabort: function ( evt ) { return; },
 									xhrFields: { withCredentials: true }
 								};
 								return function ( s ) {
@@ -255,6 +347,8 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 		}, {
 			public: false
 		}],
+		/** [/XML HTTP REQUEST] */
+		/** [FORM VALIDATION] */
 		8: [function ( require, module, exports ) {
 			var v_worker = {
 				validate: module.aggregate( function () {
@@ -283,11 +377,17 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 							if ( this.required( val ).error ) val = "";
 							if ( isNaN( key ) ) return { msg: "", error: false };
 							key = parseInt( key );
-							if ( val.length < key ) return { msg: String.format( "Minimum {0} characters required !!!", key), error: true };
+							if ( val.length < key ) return { msg: String.format( "Minimum {0} characters required !!!", key ), error: true };
 							return { msg: "", error: false };
 						},
 						type: this.aggregate( function () {
-							var t_work = {
+                            var t_work = {
+                                white_space: function ( value ) {
+                                    if ( !value ) return false;
+                                    if ( value.match( /\s+/g ) )
+                                        return false;
+                                    return true;
+                                },
 								email: function ( value, key ) {
 									if ( /^[\w\-\.\+]+\@[a-zA-Z0-9\.\-]+\.[a-zA-z0-9]{2,4}$/.test( value ) ) {
 										return true;
@@ -312,7 +412,8 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 								mixed/*[specialCharacter]*/: function ( val ) {
 									return /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test( val ) !== true;
 								},
-							}, message = {
+                            }, message = {
+                                white_space: "White space not allowed!!!",
 								email: "Email should be the real one!!!",
 								mobile: "Mobile number should be the real one!!!",
 								numeric: "Numeric required !!!",
@@ -323,7 +424,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 							return function ( val, key ) {
 								if ( this.required( key ).error )
 									return { msg: "", error: false };
-								if ( typeof ( t_work[key] ) !== 'function' ) 
+								if ( typeof ( t_work[key] ) !== 'function' )
 									return { msg: "", error: false };
 								if ( this.required( val ).error ) val = "";
 								if ( t_work[key]( val ) )
@@ -340,7 +441,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 							return { msg: "Invalid!!!", error: true };
 						},
 					};
-					return function ( $el, logic, isGroup ) {
+					return function ( $el, logic, isGroup, setMsg, fn ) {
 						//logic = '@[msg=email;required;pattern=;max=10;min=2;type=email;]';
 						$el = v_worker.getInstance( $el );
 						if ( q_work.required( logic ).error || typeof ( logic ) !== 'string' ) {
@@ -350,43 +451,62 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 							//Success
 							return true;
 						}
+						setMsg = typeof ( setMsg ) !== 'boolean';
 						logic = String( logic );
 						logic = logic.substring( 2, logic.length );
 						logic = logic.substring( 0, logic.length - 2 );
 						let larr = logic.split( ";" );
 						let hasError = false; let wmsg = "", keyMsg = "";
 						let val = $el.val();
-						for ( let x = 0, l = larr.length; x < l; x++ ) {
-							let clogic = larr[x];
-							if ( !clogic ) continue;
-							let carr = clogic.split( '=' );
-							if ( carr[0] === 'msg' ) {
-								if ( x > 0 ) throw new Error( "Invalid Positon of Message!!!" + carr[1] );
-								keyMsg = carr[1]; continue;
+						let isCheckBox = $el.is( ":checkbox" );
+						if ( isCheckBox ) {
+							if ( larr.indexOf( 'required' ) > -1 ) {
+								if ( $el.is( ":checked" ) === false ) {
+									hasError = true;
+								}
 							}
-							if ( typeof ( q_work[carr[0]] ) !== 'function' ) {
-								throw new TypeError( "Invalid logic defined!!!" + carr[0] );
-							}
-							resp = q_work[carr[0]]( val, carr[1], keyMsg );
-							if ( resp.error ) {
-								hasError = true;
-								wmsg = resp.msg;
-								break;
+							wmsg = null;
+						} else {
+							for ( let x = 0, l = larr.length; x < l; x++ ) {
+								let clogic = larr[x];
+								if ( !clogic ) continue;
+								let carr = clogic.split( '=' );
+								if ( carr[0] === 'msg' ) {
+									if ( x > 0 ) throw new Error( "Invalid Positon of Message!!!" + carr[1] );
+									keyMsg = carr[1]; continue;
+								}
+								if ( typeof ( q_work[carr[0]] ) !== 'function' ) {
+									throw new TypeError( "Invalid logic defined!!!" + carr[0] );
+								}
+								resp = q_work[carr[0]]( val, carr[1], keyMsg );
+								if ( resp.error ) {
+									hasError = true;
+									wmsg = resp.msg;
+									break;
+								}
 							}
 						}
+						if ( typeof ( fn ) === 'function' ) {
+							fn.call( $el, hasError, wmsg );
+							return hasError;
+						}
 						if ( hasError ) {
-							$el.removeClass( 'ng-valid' )
-								.removeClass( 'form-control-success' )
-								.addClass( 'ng-invalid form-control-danger' );
-							if ( isGroup ) {
-								$( '[data-msg_name="' + $el.attr( 'name' ) + '"]' ).removeClass( 'success' ).addClass( 'error' ).html( wmsg );
-							} else {
-								$el.after( '<small data-type="___msg" class="form-text error"> ' + wmsg + '</small >' );
+							if ( setMsg )
+								$( $el.parent() ).removeClass( "state-success" ).addClass( "state-error" );
+							if ( wmsg ) {
+								if ( isGroup ) {
+									if ( setMsg )
+										$( '[data-msg_name="' + $el.attr( 'name' ) + '"]' ).removeClass( 'success' ).addClass( 'error' ).html( wmsg );
+								} else {
+									if ( setMsg )
+										$el.after( '<small data-type="___msg" class="form-text error"> ' + wmsg + '</small >' );
+								}
 							}
 						} else {
-							$el.removeClass( 'ng-invalid' )
-								.removeClass('form-control-danger')
-								.addClass( 'ng-valid form-control-success' );
+							if ( setMsg ) {
+								$( $el.parent() ).removeClass( "state-error" ).addClass( "state-success" );
+								!isGroup ? undefined : $( '[data-msg_name="' + $el.attr( 'name' ) + '"]' ).removeClass( 'error' ).addClass( 'success' ).html( "Valid..." );
+							}
 						}
 						$el = larr = val = undefined;
 						return hasError;
@@ -394,20 +514,24 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 				} ),
 				reset: function ( $frm, cb, isGroup ) {
 					$frm = this.getInstance( $frm );
-					Sow.Async.execute( function () {
+					Sow.async( function () {
 						let $el = $( '[data-type="___msg"]' );
 						$el.each( function () {
+							let $inst = $( this );
+							if ( $inst.attr( 'data-keep-alive' ) === 'true' ) return;
 							if ( isGroup ) {
-								$( this ).removeClass( 'error' ).removeClass( 'success' ).html( '' );
+								$inst.removeClass( 'error' ).removeClass( 'success' ).html( '' );
 								return;
 							}
-							$( this ).remove();
+							$inst.remove();
 							return;
 						} );
 						$frm.each( function () {
-							$( this ).removeClass( 'ng-invalid' )
-								.removeClass( 'form-control-danger' )
-								.addClass( 'ng-valid form-control-success' );
+							let $inst = $( this );
+							if ( $inst.attr( 'data-val-own' ) === 'true' ) return;
+							$( $( this ).parent() ).removeClass( "state-error" )
+								.addClass( "state-success" );
+
 							return;
 						} );
 						cb.call( v_worker );
@@ -415,22 +539,32 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 					return;
 				},
 				getInstance: function ( $elm ) {
-					if ( $elm === null || $elm === undefined )
+					if ( null === $elm || $elm === undefined )
 						throw new TypeError( "Invalid element defined!!!" );
 
 					if ( ( $elm instanceof $ ) )
 						return $elm;
-					
+
 					if ( typeof ( $elm ) === 'string' )
 						return $( $elm );
 
-					if ( typeof ( $elm ) === 'object' )
-						return $( $elm );
-
+					if ( typeof ( $elm ) === 'object' ) {
+						if ( $elm.toString() === "[object HTMLInputElement]" )
+							return $( $elm );
+					}
 					throw new TypeError( "Invalid element defined!!!" );
-				}
+				},
+				isEmail: function ( value ) {
+					if ( /^[\w\-\.\+]+\@[a-zA-Z0-9\.\-]+\.[a-zA-z0-9]{2,4}$/.test( value ) ) {
+						return true;
+					}
+					return false;
+				},
 			};
 			return {
+				isEmail: function ( value ) {
+					return v_worker.isEmail( value );
+				},
 				reset: function ( $frm, cb, isGroup ) {
 					typeof ( isGroup ) !== 'boolean' ? isGroup = false : undefined;
 					var that = this;
@@ -439,16 +573,19 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 					}, isGroup );
 					return this;
 				},
-				keyUp: function ( $elm, cb, keObj, isGroup ) {
+				getInstance: function ( $elm ) {
+					return v_worker.getInstance( $elm );
+				},
+				keyUp: function ( $elm, cb, keObj, isGroup, nObj ) {
 					typeof ( isGroup ) !== 'boolean' ? isGroup = false : undefined;
 					var hasCb = typeof ( cb ) === 'function';
 					var isObject = keObj === null || keObj === undefined ? false : typeof ( keObj ) === 'object';
-					Sow.Async.execute( function () {
+					Sow.async( function () {
 						$elm = v_worker.getInstance( $elm );
-						$elm.on( 'keyup', function ( e ) {
+						let kCallback = function ( e ) {
 							e.preventDefault();
 							var $el = $( this );
-							Sow.Async.execute( function () {
+							Sow.async( function () {
 								if ( hasCb ) {
 									if ( isObject ) {
 										let name = $el.attr( 'name' );
@@ -470,7 +607,17 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 								$el = undefined;
 								return;
 							}, 0 );
-						} );
+						};
+						if ( typeof ( nObj ) === 'object' ) {
+							$elm.each( function () {
+								let $inst = $( this );
+								if ( nObj[$inst.attr( 'name' )] ) return;
+								$inst.on( 'keyup', kCallback );
+							} );
+							$elm = undefined;
+							return;
+						}
+						$elm.on( 'keyup', kCallback );
 						$elm = undefined;
 						return;
 					}, 0 );
@@ -479,14 +626,16 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 				validate: function ( $elm, cb, isGroup ) {
 					typeof ( isGroup ) !== 'boolean' ? isGroup = false : undefined;
 					typeof ( cb ) !== 'function' ? cb = function () { } : undefined;
-					Sow.Async.execute( function () {
+					Sow.async( function () {
 						$elm = v_worker.getInstance( $elm );
-						var outObj = {}; var hasError = false;
+						let outObj = {}, hasError = false;
 						$elm.each( function () {
 							let $el = $( this );
+							if ( $el.attr( 'data-val-own' ) === 'true' ) return;
 							let logic = $el.attr( 'data-logic' );
+							let isCheckBox = $el.is( ":checkbox" );
 							if ( !logic ) {
-								outObj[$el.attr( 'name' )] = $el.val();
+								outObj[$el.attr( 'name' )] = ( isCheckBox ? $el.is( ":checked" ) : $el.val() );
 								return;
 							}
 							if ( v_worker.validate( $el, logic, isGroup ) ) {
@@ -494,7 +643,7 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 								return;
 							}
 							if ( hasError ) return;
-							outObj[$el.attr( 'name' )] = $el.val();
+							outObj[$el.attr( 'name' )] = ( isCheckBox ? $el.is( ":checked" ) : $el.val() );
 						} );
 						cb.call( v_worker, hasError, outObj );
 						outObj = undefined;
@@ -504,57 +653,79 @@ Sow.registerNamespace(/**[settings]*/'Sow.Net.Web', function () {
 				}
 			};
 		}, {
-			
+			public: false
 		}],
-	}, {/**[cache]*/ }, /**[entry]*/[2, 1, 3, 4, 5, 6, 7, 8]]
+		/** [/FORM VALIDATION] */
+		/** [TEMPLATE CONTROLLER] */
+		9: [function ( require, module, exports ) {
+			return module.aggregate( function () {
+				return {
+					execute: function ( data, method ) {
+						return require( 'Sow.Net.Web.XHR' );
+					}
+				};
+			} );
+		}, {
+			'Sow.Net.Web.XHR': 7
+		}],
+		/** [/TEMPLATE CONTROLLER] */
+		/** [TEMPLATE CONTROLLER] */
+		10: [function ( require, module, exports ) {
+			return module.aggregate( function () {
+				return {
+
+				};
+			} );
+		}, {
+			'Sow.Net.Hub': 2,
+			'Sow.Net.Web.XHR': 7
+		}],
+		/** [/TEMPLATE CONTROLLER] */
+	}, {/**[cache]*/ }, /**[entry]*/[9, 10, 2, 1, 3, 4, 5, 6, 7, 8]]
 } );
-Sow.usingNamespace( 'Sow.Net.SignalR' );// SignalR Core
+Sow.usingNamespace( 'Sow.Net.Hub' );// Sow.Api.Hub Core
 Sow.usingNamespace( 'Sow.Net.Web' );// Page Demand
-//this.exportNamespace( 'Sow.Net.Web.default' ).initialize();
-//this.usingPage( 'Sow.Net.Web.default' );
-//this.reRegisterNamespace( 'Sow.Net.Web.default' );
 Sow.define( "Sow", function () {
-	const PARENT_NAMESPACE = 'Sow.Net.Web';
-	var PAGE_ROUTE = false;
-	var CUR_PAGE = "";
-	var START_PAGE = function () {
-		let page = location.href.split( '#' )[1];
-		if ( !page ) return '/pages/dashboard';
-		return page;
-	}();
+	var PARENT_NAMESPACE = 'Sow.Net.Web';
+	var _PAGE_ROUTE = false,
+		_CUR_PAGE = function () {
+			let page = location.href.split( '#' )[1];
+			if ( !page ) return '/pages/dashboard';
+			return page;
+		}();
+	var IS_START = true;
 	/*[Export]*/
 	return {
 		mapPageNamespace: function ( arr ) {
 			if ( this.isArrayLike( arr ) ) {
 				return Sow.mapNamespace( PARENT_NAMESPACE, arr );
 			}
-			if ( typeof ( PAGE_ROUTE ) !== 'boolean' ) return;
-			PAGE_ROUTE = function () {
-				let outObj = {},
+            if ( typeof ( _PAGE_ROUTE ) !== 'boolean' ) return;
+			Sow.mapNamespace( PARENT_NAMESPACE, 'Sow.Net.Web.default' );
+            _PAGE_ROUTE = {};
+			( function () {
+				let
 					d = {
-						"/pages/charts/chartist-js": "Sow.Net.Web.default",
+						/*"/pages/charts/chartist-js": "Sow.Net.Web.default",
 						"/pages/dashboard": "Sow.Net.Web.default",
-						"/pages/components/treeview": "Sow.Net.Web.default"
+						"/pages/components/treeview": "Sow.Net.Web.default"*/
 					},
 					namespace = [];
 				for ( let x in d ) {
-					outObj[x] = { is_viewed: false, namespace: d[x] };
+					this[x] = { is_viewed: false, namespace: d[x] };
 					namespace.push( d[x] );
 				}
 				Sow.mapNamespace( PARENT_NAMESPACE, namespace );
-				return outObj;
-			}( this );
+				return;
+            }.apply( _PAGE_ROUTE ) );
 			return this;
 		},
 		currentPage: function () {
-			return CUR_PAGE;
+            return _CUR_PAGE;
 		},
 		getQuery: function () {
 			var uriObj = {
-				full: "",
-				keys: {
-
-				}
+				full: "", keys: {}
 			};
 			[function () {
 				let uri, lUri, oUri, i, col, oCol;
@@ -562,7 +733,7 @@ Sow.define( "Sow", function () {
 				lUri = uri.toLowerCase().split( '?' );
 				if ( !lUri[1] ) return;
 				oUri = uri.split( '?' );
-				uriObj.full = oUri[1];
+				this.full = oUri[1];
 				lUri = lUri[1].split( '&' );
 				oUri = oUri[1].split( '&' );
 				uri = undefined;
@@ -572,12 +743,11 @@ Sow.define( "Sow", function () {
 					col = lUri[i].split( '=' );
 					if ( col.length <= 0 ) continue;
 					oCol = oUri[i].split( '=' );
-					uriObj.keys[col[0]] = oCol[1];
+					this.keys[col[0]] = oCol[1];
 				}
 				uri = lUri = oUri = i = col = oCol = undefined;
 				return;
-			}.call( this )];
-
+			}.call( uriObj )];
 			return function ( key ) {
 				if ( !key ) return uriObj;
 				if ( key === 'full' ) return uriObj.full;
@@ -585,31 +755,20 @@ Sow.define( "Sow", function () {
 			};
 		}.call( this ),
 		onRouterChange: function ( event, route ) {
-			var isStart = false;
-			if ( Object.keys( event ).length > 2 ) {
-				if ( !CUR_PAGE ) return;
-				if ( !event.url === START_PAGE ) {
-					return;
-				}
-				START_PAGE = undefined;
-				isStart = true;
+			if ( IS_START ) {
+				IS_START = false;
+				console.log( event );
+				return;
 			}
-			if ( typeof ( PAGE_ROUTE ) === 'boolean' ) {
+            if ( typeof ( _PAGE_ROUTE ) === 'boolean' ) {
 				Sow.mapPageNamespace();
 			};
-			CUR_PAGE = event.url;
-			if ( typeof ( PAGE_ROUTE[CUR_PAGE] ) !== 'object' ) {
-				//throw new Error( String.format( "Invalid page route defind===>{0}", event.url ) );
-				return;
-			}
-
-			let namespace = PAGE_ROUTE[CUR_PAGE].namespace;
+            _CUR_PAGE = event.url;
+			console.log( String.format( "Page route defind===>{0}", event.url ) );
+            if ( typeof ( _PAGE_ROUTE[_CUR_PAGE] ) !== 'object' ) return;
+            let namespace = _PAGE_ROUTE[_CUR_PAGE].namespace;
 			console.log( String.format( "Prepare namespace ===>{0}", namespace ) );
 			Sow.reRegisterNamespace( namespace );
-			if ( isStart ) {
-				Sow.exportNamespace( namespace ).initialize();
-				return;
-			}
 			Sow.exportNamespace( namespace ).ready();
 			return;
 		}
@@ -626,4 +785,10 @@ Sow.define( "Sow", function () {
 		}
 	};
 } );
-//{id: 5, url: "/pages/charts/chartist-js"}
+if ( Sow.OS !== "Windows" ) {
+    window.PleaseRotateOptions = {
+        onlyMobile: true,
+        forcePortrait: false,
+        message: "For better view, “Please Rotate your device” screen."
+    };
+}
