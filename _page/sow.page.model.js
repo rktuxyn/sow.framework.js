@@ -1,4 +1,13 @@
-﻿Sow.registerNamespace(/**[settings]*/'Sow.Net.Web.default', function () {
+/**
+* Copyright (c) 2018, SOW (https://www.facebook.com/safeonlineworld). (https://github.com/RKTUXYN) All rights reserved.
+* @author {SOW}
+* @description {sow.page.model.js}
+* @example { }
+* Copyrights licensed under the New BSD License.
+* See the accompanying LICENSE file for terms.
+*/
+Sow.registerNamespace(/**[settings]*/'Sow.Net.Web.default', function () {
+	var isConnected = false;
 	return /**[modules]*/[{
 		//[Extend VIEW]
 		100: [function ( require, module, exports ) {
@@ -8,6 +17,12 @@
 					onExecuteIo: function ( a, b, c ) {
 						if ( typeof ( this[c] ) === 'function' )
 							this[c]( a, b );
+					},
+					onSignalRReady: function ( c, a, b, s ) {
+						console.log( arguments ); isConnected = true;
+						/**this.server.executeIo( c.call( this, function () {
+							console.log( arguments );
+						} ), "client._check", JSON.stringify( { a: 1, b: 2 } ) );*/
 					},
 				};
 			} );
@@ -24,50 +39,41 @@
 					ready: function ( a ) {
 						console.log( a );
 						require( 'Sow.Net.Web.Data' ).a( "I'm Ready..." );
-					}
-				};
-			} );
-
-		}, {
-			'Sow.Net.Web.Controller': 3,
-			'Sow.Net.Web.Data': 4,
-			'Sow.Net.Web.View': 5
-		}]
-	}, {/**[cache]*/ }, /**[entry]*/[100, 101]]
-} ).registerNamespace(/**[settings]*/'Sow.Net.Web.Auth.Login', function () {
-	return /**[modules]*/[{
-		//[Extend VIEW]
-		100: [function ( require, module, exports ) {
-
-			return module.aggregate( function () {
-				return {
-					onExecuteIo: function ( a, b, c ) {
-						if ( typeof ( this[c] ) === 'function' )
-							this[c]( a, b );
+					},
+					onLoad: function ( a ) {
+						if ( a === "FIRST_LOADED" ) return;
+						console.log( a );
 					},
 				};
 			} );
 
 		}, {
-			isExtend: true,
-			ext_key: 5
+			'Sow.Net.Web.Controller': 3,
+			'Sow.Net.Hub': 2,
+			'Sow.Net.Web.Data': 4,
+			'Sow.Net.Web.View': 5
 		}],
-		//[/Extend VIEW]
-		101: [function ( require, module, exports ) {
+		102: [function ( require, module, exports ) {
 
 			return module.aggregate( function () {
 				return {
-					ready: function ( a ) {
+					onPageLoad: function ( a ) {
+						require( 'Sow.Net.Hub' ).execute( true, function ( c ) {
+							if ( c === "NOT_CONNECTED" ) return;
+							/**this.server.executeIo( c.call( this, function () {
+								console.log( arguments );
+							} ), "client._check", JSON.stringify( { a: 1, b: 2 } ) );*/
+							this.server.onTaskEnd( c.call( this, function () {
+								console.log( arguments );
+							} ), 'Welcome!!!' );
+						} );
 						console.log( a );
-						require( 'Sow.Net.Web.Data' ).a( "I'm Ready..." );
-					}
+					},
 				};
 			} );
 
 		}, {
-			'Sow.Net.Web.Controller': 3,
-			'Sow.Net.Web.Data': 4,
-			'Sow.Net.Web.View': 5
+			'Sow.Net.Hub': 2,
 		}]
-	}, {/**[cache]*/ }, /**[entry]*/[100, 101]]
-} ).mapPageNamespace( );
+	}, {/**[cache]*/ }, /**[entry]*/[100, 101]];
+} ).mapPageNamespace();
